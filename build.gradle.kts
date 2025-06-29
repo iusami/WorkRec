@@ -15,4 +15,5 @@ plugins {
     id("com.google.dagger.hilt.android") version "2.48" apply false
     id("kotlin-kapt") apply false
     id("kotlin-parcelize") apply false
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22" apply false
 }

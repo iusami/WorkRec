@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.workrec.presentation.navigation.WorkRecNavigation
 import com.workrec.presentation.ui.theme.WorkRecTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -20,12 +21,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             WorkRecTheme {
-                // メインUIを将来的にここに配置
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // TODO: ナビゲーション設定を追加
+                    WorkRecNavigation()
                 }
             }
         }
