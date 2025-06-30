@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -20,19 +22,23 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.workrec.R
 import com.workrec.presentation.ui.screens.workout.WorkoutListScreen
+import com.workrec.presentation.ui.screens.workout.AddWorkoutScreen
 import com.workrec.presentation.ui.screens.calendar.CalendarScreen
 import com.workrec.presentation.ui.screens.progress.ProgressScreen
 import com.workrec.presentation.ui.screens.goal.GoalScreen
+import com.workrec.presentation.viewmodel.AddWorkoutViewModel
+import com.workrec.presentation.viewmodel.GoalViewModel
+import com.workrec.presentation.viewmodel.ViewModelFactory
+import com.workrec.presentation.viewmodel.WorkoutViewModel
 
 /**
- * アプリのメインナビゲーション
+ * アプリのメインナビゲーション - Manual DI対応
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkRecNavigation() {
+fun WorkRecNavigation(viewModelFactory: ViewModelFactory) {
     val navController = rememberNavController()
     
     Scaffold(
@@ -42,64 +48,74 @@ fun WorkRecNavigation() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.WorkoutList,
+            startDestination = Routes.WORKOUT_LIST,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
             // ワークアウト一覧画面
-            composable<Screen.WorkoutList> {
+            composable(Routes.WORKOUT_LIST) {
+                val workoutViewModel: WorkoutViewModel = viewModel(factory = viewModelFactory)
                 WorkoutListScreen(
                     onNavigateToAddWorkout = {
-                        navController.navigate(Screen.AddWorkout)
+                        navController.navigate(Routes.ADD_WORKOUT)
                     },
                     onNavigateToWorkoutDetail = { workoutId ->
-                        navController.navigate(Screen.WorkoutDetail(workoutId))
-                    }
+                        navController.navigate("workout_detail/$workoutId")
+                    },
+                    viewModel = workoutViewModel
                 )
             }
             
             // ワークアウト詳細画面
-            composable<Screen.WorkoutDetail> { backStackEntry ->
-                val workoutDetail: Screen.WorkoutDetail = backStackEntry.toRoute()
+            composable(Routes.WORKOUT_DETAIL) { backStackEntry ->
+                val workoutId = backStackEntry.arguments?.getString("workoutId")?.toLongOrNull() ?: 0L
                 // TODO: ワークアウト詳細画面の実装
             }
             
             // ワークアウト追加画面
-            composable<Screen.AddWorkout> {
-                // TODO: ワークアウト追加画面の実装
+            composable(Routes.ADD_WORKOUT) {
+                val addWorkoutViewModel: AddWorkoutViewModel = viewModel(factory = viewModelFactory)
+                AddWorkoutScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    viewModel = addWorkoutViewModel
+                )
             }
             
             // カレンダー画面
-            composable<Screen.Calendar> {
+            composable(Routes.CALENDAR) {
                 CalendarScreen()
             }
             
             // 進捗画面
-            composable<Screen.Progress> {
+            composable(Routes.PROGRESS) {
                 ProgressScreen()
             }
             
             // 目標一覧画面
-            composable<Screen.GoalList> {
+            composable(Routes.GOAL_LIST) {
+                val goalViewModel: GoalViewModel = viewModel(factory = viewModelFactory)
                 GoalScreen(
                     onNavigateToAddGoal = {
-                        navController.navigate(Screen.AddGoal)
+                        navController.navigate(Routes.ADD_GOAL)
                     },
                     onNavigateToGoalDetail = { goalId ->
-                        navController.navigate(Screen.GoalDetail(goalId))
-                    }
+                        navController.navigate("goal_detail/$goalId")
+                    },
+                    viewModel = goalViewModel
                 )
             }
             
             // 目標詳細画面
-            composable<Screen.GoalDetail> { backStackEntry ->
-                val goalDetail: Screen.GoalDetail = backStackEntry.toRoute()
+            composable(Routes.GOAL_DETAIL) { backStackEntry ->
+                val goalId = backStackEntry.arguments?.getString("goalId")?.toLongOrNull() ?: 0L
                 // TODO: 目標詳細画面の実装
             }
             
             // 目標追加画面
-            composable<Screen.AddGoal> {
+            composable(Routes.ADD_GOAL) {
                 // TODO: 目標追加画面の実装
             }
         }
@@ -119,7 +135,7 @@ fun WorkRecBottomNavigation(navController: NavController) {
             NavigationBarItem(
                 icon = { Icon(item.icon, contentDescription = item.label) },
                 label = { Text(item.label) },
-                selected = currentDestination?.hierarchy?.any { it.route == item.route::class.qualifiedName } == true,
+                selected = currentDestination?.route == item.route,
                 onClick = {
                     navController.navigate(item.route) {
                         // ボトムナビゲーションの標準的な動作
@@ -139,29 +155,29 @@ fun WorkRecBottomNavigation(navController: NavController) {
  * ボトムナビゲーションのアイテム定義
  */
 data class BottomNavItem(
-    val route: Screen,
+    val route: String,
     val icon: ImageVector,
     val label: String
 )
 
 private val bottomNavItems = listOf(
     BottomNavItem(
-        route = Screen.WorkoutList,
+        route = Routes.WORKOUT_LIST,
         icon = Icons.Default.FitnessCenter,
         label = "ワークアウト"
     ),
     BottomNavItem(
-        route = Screen.Progress,
+        route = Routes.PROGRESS,
         icon = Icons.Default.ShowChart,
         label = "進捗"
     ),
     BottomNavItem(
-        route = Screen.Calendar,
+        route = Routes.CALENDAR,
         icon = Icons.Default.CalendarMonth,
         label = "カレンダー"
     ),
     BottomNavItem(
-        route = Screen.GoalList,
+        route = Routes.GOAL_LIST,
         icon = Icons.Default.TrackChanges,
         label = "目標"
     )

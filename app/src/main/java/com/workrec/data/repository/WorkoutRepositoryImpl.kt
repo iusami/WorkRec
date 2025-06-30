@@ -10,16 +10,16 @@ import com.workrec.domain.repository.WorkoutStats
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
-import javax.inject.Inject
-import javax.inject.Singleton
+// import javax.inject.Inject
+// import javax.inject.Singleton
 import kotlin.time.Duration.Companion.minutes
 
 /**
  * ワークアウトリポジトリの実装
  * Room DatabaseとドメインレイヤーのWorkoutRepositoryインターフェースを繋ぐ
  */
-@Singleton
-class WorkoutRepositoryImpl @Inject constructor(
+// @Singleton
+class WorkoutRepositoryImpl constructor(
     private val workoutDao: WorkoutDao,
     private val exerciseDao: ExerciseDao,
     private val exerciseSetDao: ExerciseSetDao

@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * アプリの画面定義
- * Navigation Compose 3.0の型安全なナビゲーションを使用
+ * 文字列ルートと型安全なナビゲーションの両方に対応
  */
 sealed interface Screen {
     
@@ -31,4 +31,18 @@ sealed interface Screen {
     
     @Serializable
     object AddGoal : Screen
+}
+
+/**
+ * 文字列ルート定数（Navigation Compose 2.7.x互換）
+ */
+object Routes {
+    const val WORKOUT_LIST = "workout_list"
+    const val WORKOUT_DETAIL = "workout_detail/{workoutId}"
+    const val ADD_WORKOUT = "add_workout"
+    const val CALENDAR = "calendar"
+    const val PROGRESS = "progress"
+    const val GOAL_LIST = "goal_list"
+    const val GOAL_DETAIL = "goal_detail/{goalId}"
+    const val ADD_GOAL = "add_goal"
 }

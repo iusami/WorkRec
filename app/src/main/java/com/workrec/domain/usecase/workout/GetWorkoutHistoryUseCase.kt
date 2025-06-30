@@ -5,12 +5,12 @@ import com.workrec.domain.repository.WorkoutRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
-import javax.inject.Inject
+// import javax.inject.Inject
 
 /**
  * ワークアウト履歴取得のユースケース
  */
-class GetWorkoutHistoryUseCase @Inject constructor(
+class GetWorkoutHistoryUseCase constructor(
     private val workoutRepository: WorkoutRepository
 ) {
     /**

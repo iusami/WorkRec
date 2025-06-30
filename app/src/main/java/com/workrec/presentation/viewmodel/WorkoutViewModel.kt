@@ -6,18 +6,18 @@ import com.workrec.domain.entities.Workout
 import com.workrec.domain.usecase.workout.AddWorkoutUseCase
 import com.workrec.domain.usecase.workout.DeleteWorkoutUseCase
 import com.workrec.domain.usecase.workout.GetWorkoutHistoryUseCase
-import dagger.hilt.android.lifecycle.HiltViewModel
+// import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import javax.inject.Inject
+// import javax.inject.Inject
 
 /**
  * ワークアウト画面のViewModel
  * UI状態の管理とビジネスロジックの調整を行う
  */
-@HiltViewModel
-class WorkoutViewModel @Inject constructor(
+// @HiltViewModel
+class WorkoutViewModel constructor(
     private val addWorkoutUseCase: AddWorkoutUseCase,
     private val getWorkoutHistoryUseCase: GetWorkoutHistoryUseCase,
     private val deleteWorkoutUseCase: DeleteWorkoutUseCase

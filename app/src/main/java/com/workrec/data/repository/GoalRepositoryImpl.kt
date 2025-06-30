@@ -8,15 +8,15 @@ import com.workrec.domain.entities.GoalType
 import com.workrec.domain.repository.GoalRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
+// import javax.inject.Inject
+// import javax.inject.Singleton
 
 /**
  * 目標リポジトリの実装
  * Room DatabaseとドメインレイヤーのGoalRepositoryインターフェースを繋ぐ
  */
-@Singleton
-class GoalRepositoryImpl @Inject constructor(
+// @Singleton
+class GoalRepositoryImpl constructor(
     private val goalDao: GoalDao
 ) : GoalRepository {
 
