@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -30,15 +30,14 @@ import com.workrec.presentation.ui.screens.progress.ProgressScreen
 import com.workrec.presentation.ui.screens.goal.GoalScreen
 import com.workrec.presentation.viewmodel.AddWorkoutViewModel
 import com.workrec.presentation.viewmodel.GoalViewModel
-import com.workrec.presentation.viewmodel.ViewModelFactory
 import com.workrec.presentation.viewmodel.WorkoutViewModel
 
 /**
- * アプリのメインナビゲーション - Manual DI対応
+ * アプリのメインナビゲーション - Hilt DI対応
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkRecNavigation(viewModelFactory: ViewModelFactory) {
+fun WorkRecNavigation() {
     val navController = rememberNavController()
     
     Scaffold(
@@ -55,7 +54,7 @@ fun WorkRecNavigation(viewModelFactory: ViewModelFactory) {
         ) {
             // ワークアウト一覧画面
             composable(Routes.WORKOUT_LIST) {
-                val workoutViewModel: WorkoutViewModel = viewModel(factory = viewModelFactory)
+                val workoutViewModel: WorkoutViewModel = hiltViewModel()
                 WorkoutListScreen(
                     onNavigateToAddWorkout = {
                         navController.navigate(Routes.ADD_WORKOUT)
@@ -75,7 +74,7 @@ fun WorkRecNavigation(viewModelFactory: ViewModelFactory) {
             
             // ワークアウト追加画面
             composable(Routes.ADD_WORKOUT) {
-                val addWorkoutViewModel: AddWorkoutViewModel = viewModel(factory = viewModelFactory)
+                val addWorkoutViewModel: AddWorkoutViewModel = hiltViewModel()
                 AddWorkoutScreen(
                     onNavigateBack = {
                         navController.popBackStack()
@@ -96,7 +95,7 @@ fun WorkRecNavigation(viewModelFactory: ViewModelFactory) {
             
             // 目標一覧画面
             composable(Routes.GOAL_LIST) {
-                val goalViewModel: GoalViewModel = viewModel(factory = viewModelFactory)
+                val goalViewModel: GoalViewModel = hiltViewModel()
                 GoalScreen(
                     onNavigateToAddGoal = {
                         navController.navigate(Routes.ADD_GOAL)
