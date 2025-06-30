@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+// import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.workrec.R
 import com.workrec.domain.entities.Goal
@@ -26,7 +26,7 @@ import com.workrec.presentation.viewmodel.GoalViewModel
 fun GoalScreen(
     onNavigateToAddGoal: () -> Unit,
     onNavigateToGoalDetail: (Long) -> Unit,
-    viewModel: GoalViewModel = hiltViewModel()
+    viewModel: GoalViewModel
 ) {
     val activeGoals by viewModel.activeGoals.collectAsStateWithLifecycle()
     val completedGoals by viewModel.completedGoals.collectAsStateWithLifecycle()

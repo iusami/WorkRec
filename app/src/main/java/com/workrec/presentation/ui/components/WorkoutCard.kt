@@ -10,14 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.workrec.domain.entities.Workout
-import kotlinx.datetime.format
-import kotlinx.datetime.format.FormatStringsInDatetimeFormats
-import kotlinx.datetime.format.byUnicodePattern
 
 /**
  * ワークアウト表示用のカードコンポーネント
  */
-@OptIn(ExperimentalMaterial3Api::class, FormatStringsInDatetimeFormats::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutCard(
     workout: Workout,
@@ -42,9 +39,7 @@ fun WorkoutCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = workout.date.format(
-                        LocalDate.Format { byUnicodePattern("yyyy年MM月dd日") }
-                    ),
+                    text = workout.date.toString(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
