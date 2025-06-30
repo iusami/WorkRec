@@ -36,6 +36,12 @@ interface WorkoutDao {
     suspend fun getWorkoutsByDateRange(startDate: LocalDate, endDate: LocalDate): List<WorkoutEntity>
     
     /**
+     * 指定した期間のワークアウトを取得（Flow版）
+     */
+    @Query("SELECT * FROM workouts WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    fun getWorkoutsByDateRangeFlow(startDate: LocalDate, endDate: LocalDate): Flow<List<WorkoutEntity>>
+    
+    /**
      * ワークアウトを挿入
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

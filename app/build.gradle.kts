@@ -106,6 +106,9 @@ dependencies {
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 
+    // Charts - 進捗可視化用
+    implementation("io.github.ehsannarmani:compose-charts:0.0.13")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.arch.core:core-testing:2.2.0")

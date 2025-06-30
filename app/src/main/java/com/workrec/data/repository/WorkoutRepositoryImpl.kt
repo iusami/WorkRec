@@ -53,6 +53,17 @@ class WorkoutRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getWorkoutsByDateRangeFlow(
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Flow<List<Workout>> {
+        return workoutDao.getWorkoutsByDateRangeFlow(startDate, endDate).map { workoutEntities ->
+            workoutEntities.map { workoutEntity ->
+                workoutEntity.toDomainModelWithExercises()
+            }
+        }
+    }
+
     override suspend fun saveWorkout(workout: Workout): Long {
         // ワークアウトを保存
         val workoutEntity = workout.toEntity()

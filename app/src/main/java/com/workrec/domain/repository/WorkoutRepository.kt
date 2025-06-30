@@ -34,6 +34,14 @@ interface WorkoutRepository {
     ): List<Workout>
     
     /**
+     * 指定した期間のワークアウトを取得（Flow版）
+     */
+    fun getWorkoutsByDateRangeFlow(
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Flow<List<Workout>>
+    
+    /**
      * ワークアウトを保存または更新
      */
     suspend fun saveWorkout(workout: Workout): Long

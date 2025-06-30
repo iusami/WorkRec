@@ -29,6 +29,15 @@
     <string name="progress_chart">進捗グラフ</string>
     <string name="goal">目標</string>
     <string name="goal_setting">目標設定</string>
+    <string name="statistics">統計</string>
+    <string name="personal_records">個人記録</string>
+    <string name="weekly_trend">週間推移</string>
+    <string name="volume_trend">ボリューム推移</string>
+    <string name="goal_progress">目標進捗</string>
+    <string name="period_week">週</string>
+    <string name="period_month">月</string>
+    <string name="period_three_months">3ヶ月</string>
+    <string name="period_year">年</string>
     
     <!-- カレンダー関連 -->
     <string name="calendar">カレンダー</string>
