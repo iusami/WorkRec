@@ -1,9 +1,6 @@
 package com.workrec.presentation.ui.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.MonitorWeight
@@ -129,18 +126,34 @@ fun StatisticsGrid(
         )
     )
     
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+    // LazyVerticalGridの代わりに通常のColumnとRowを使用してクラッシュを回避
+    Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(statItems) { item ->
-            StatCard(
-                title = item.title,
-                value = item.value,
-                icon = item.icon
-            )
+        for (i in statItems.indices step 2) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StatCard(
+                    title = statItems[i].title,
+                    value = statItems[i].value,
+                    icon = statItems[i].icon,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                if (i + 1 < statItems.size) {
+                    StatCard(
+                        title = statItems[i + 1].title,
+                        value = statItems[i + 1].value,
+                        icon = statItems[i + 1].icon,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }

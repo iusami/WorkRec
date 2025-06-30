@@ -17,6 +17,7 @@ import com.workrec.presentation.viewmodel.ProgressUiState
 import com.workrec.R
 import com.workrec.domain.entities.TimePeriod
 import com.workrec.presentation.ui.components.*
+import com.workrec.presentation.ui.components.GoalProgressData
 import com.workrec.presentation.viewmodel.ProgressViewModel
 
 /**
@@ -52,7 +53,7 @@ fun ProgressScreen(
                 .padding(innerPadding)
         ) {
             when {
-                uiState.isInitialLoading -> {
+                uiState.isLoading -> {
                     // 初期読み込み中
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -71,7 +72,7 @@ fun ProgressScreen(
                     }
                 }
 
-                uiState.isError -> {
+                uiState.errorMessage != null -> {
                     // エラー状態
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -127,13 +128,6 @@ fun ProgressScreen(
                     )
                 }
             }
-
-            // リフレッシュ中のインジケーター
-            if (uiState.isRefreshing) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
         }
     }
 }
@@ -143,7 +137,7 @@ fun ProgressScreen(
  */
 @Composable
 private fun ProgressContent(
-    uiState: ProgressViewModel.ProgressUiState,
+    uiState: ProgressUiState,
     onTimePeriodSelected: (TimePeriod) -> Unit,
     modifier: Modifier = Modifier
 ) {
