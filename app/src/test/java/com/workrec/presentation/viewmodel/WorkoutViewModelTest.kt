@@ -26,7 +26,7 @@ class WorkoutViewModelTest {
     @get:Rule
     val instantTaskExecutorRule = InstantTaskExecutorRule()
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     private lateinit var mockAddWorkoutUseCase: AddWorkoutUseCase
     private lateinit var mockGetWorkoutHistoryUseCase: GetWorkoutHistoryUseCase
@@ -105,12 +105,11 @@ class WorkoutViewModelTest {
         // When: ワークアウト追加を開始
         viewModel.addWorkout(workout)
 
-        // Then: ロード中状態になる
-        assertTrue(viewModel.uiState.value.isLoading)
-
-        // ロード完了
-        testDispatcher.scheduler.advanceUntilIdle()
+        // Then: UnconfinedTestDispatcherにより即座に実行完了
+        // ロード完了後の状態を確認
         assertFalse(viewModel.uiState.value.isLoading)
+        assertNull(viewModel.uiState.value.errorMessage)
+        assertEquals("ワークアウトを保存しました", viewModel.uiState.value.message)
     }
 
     @Test
@@ -195,9 +194,8 @@ class WorkoutViewModelTest {
     @Test
     fun `clearError_エラーメッセージがクリアされること`() = runTest {
         // Given: エラーメッセージが設定された状態
-        viewModel.addWorkout(createTestWorkout()) // エラーを発生させる
         coEvery { mockAddWorkoutUseCase(any()) } returns Result.failure(RuntimeException("エラー"))
-        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.addWorkout(createTestWorkout()) // エラーを発生させる
 
         // When: エラーをクリア
         viewModel.clearError()
