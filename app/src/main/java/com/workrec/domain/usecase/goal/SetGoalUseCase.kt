@@ -2,12 +2,12 @@ package com.workrec.domain.usecase.goal
 
 import com.workrec.domain.entities.Goal
 import com.workrec.domain.repository.GoalRepository
-// import javax.inject.Inject
+import javax.inject.Inject
 
 /**
  * 目標設定のユースケース
  */
-class SetGoalUseCase constructor(
+class SetGoalUseCase @Inject constructor(
     private val goalRepository: GoalRepository
 ) {
     /**

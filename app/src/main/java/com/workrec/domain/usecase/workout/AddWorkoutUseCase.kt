@@ -2,13 +2,14 @@ package com.workrec.domain.usecase.workout
 
 import com.workrec.domain.entities.Workout
 import com.workrec.domain.repository.WorkoutRepository
+import javax.inject.Inject
 // import javax.inject.Inject
 
 /**
  * ワークアウト追加のユースケース
  * ビジネスルールとデータ検証を含む
  */
-class AddWorkoutUseCase constructor(
+class AddWorkoutUseCase @Inject constructor(
     private val workoutRepository: WorkoutRepository
 ) {
     /**

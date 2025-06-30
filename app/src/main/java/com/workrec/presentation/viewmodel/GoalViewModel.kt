@@ -5,16 +5,16 @@ import androidx.lifecycle.viewModelScope
 import com.workrec.domain.entities.Goal
 import com.workrec.domain.usecase.goal.GetGoalProgressUseCase
 import com.workrec.domain.usecase.goal.SetGoalUseCase
-// import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-// import javax.inject.Inject
+import javax.inject.Inject
 
 /**
  * 目標画面のViewModel
  */
-// @HiltViewModel
-class GoalViewModel constructor(
+@HiltViewModel
+class GoalViewModel @Inject constructor(
     private val setGoalUseCase: SetGoalUseCase,
     private val getGoalProgressUseCase: GetGoalProgressUseCase
 ) : ViewModel() {

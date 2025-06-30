@@ -6,12 +6,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
-// import javax.inject.Inject
+import javax.inject.Inject
 
 /**
  * 目標進捗取得のユースケース
  */
-class GetGoalProgressUseCase constructor(
+class GetGoalProgressUseCase @Inject constructor(
     private val goalRepository: GoalRepository
 ) {
     /**

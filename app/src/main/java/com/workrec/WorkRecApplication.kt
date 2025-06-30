@@ -12,13 +12,13 @@ import com.workrec.domain.usecase.goal.SetGoalUseCase
 import com.workrec.domain.usecase.workout.AddWorkoutUseCase
 import com.workrec.domain.usecase.workout.DeleteWorkoutUseCase
 import com.workrec.domain.usecase.workout.GetWorkoutHistoryUseCase
-// import dagger.hilt.android.HiltAndroidApp  // 一時的に無効化
+import dagger.hilt.android.HiltAndroidApp
 
 /**
  * WorkRecアプリケーションクラス
  * Manual DI - 依存関係の初期化とグローバル設定を行う
  */
-// @HiltAndroidApp  // 一時的に無効化
+@HiltAndroidApp
 class WorkRecApplication : Application() {
     
     // Database

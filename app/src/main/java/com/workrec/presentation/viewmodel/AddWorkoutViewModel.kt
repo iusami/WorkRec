@@ -4,20 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.workrec.domain.entities.*
 import com.workrec.domain.usecase.workout.AddWorkoutUseCase
-// import dagger.hilt.android.lifecycle.HiltViewModel  // 一時的に無効化
+import dagger.hilt.android.lifecycle.HiltViewModel  // 一時的に無効化
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
-// import javax.inject.Inject  // 一時的に無効化
+import javax.inject.Inject  // 一時的に無効化
 
 /**
  * ワークアウト追加画面のViewModel（一時的にManual DIに変更）
  */
-// @HiltViewModel  // 一時的に無効化
-class AddWorkoutViewModel /*@Inject constructor*/(
+@HiltViewModel
+class AddWorkoutViewModel @Inject constructor(
     private val addWorkoutUseCase: AddWorkoutUseCase
 ) : ViewModel() {
 

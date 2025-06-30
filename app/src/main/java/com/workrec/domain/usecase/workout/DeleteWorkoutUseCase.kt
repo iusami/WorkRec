@@ -2,12 +2,13 @@ package com.workrec.domain.usecase.workout
 
 import com.workrec.domain.entities.Workout
 import com.workrec.domain.repository.WorkoutRepository
+import javax.inject.Inject
 // import javax.inject.Inject
 
 /**
  * ワークアウト削除のユースケース
  */
-class DeleteWorkoutUseCase constructor(
+class DeleteWorkoutUseCase @Inject constructor(
     private val workoutRepository: WorkoutRepository
 ) {
     /**
