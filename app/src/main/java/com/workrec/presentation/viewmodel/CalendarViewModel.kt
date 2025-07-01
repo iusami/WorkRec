@@ -11,9 +11,11 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
+import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
 import com.workrec.domain.usecase.calendar.GetWorkoutDatesUseCase
 import com.workrec.domain.usecase.calendar.GetWorkoutsByDateUseCase
@@ -132,7 +134,7 @@ class CalendarViewModel @Inject constructor(
         // 今日から逆算してストリークを計算
         while (sortedDates.contains(checkDate)) {
             currentStreak++
-            checkDate = LocalDate(checkDate.year, checkDate.month, checkDate.dayOfMonth - 1)
+            checkDate = checkDate.minus(DatePeriod(days = 1))
         }
         
         // 最長ストリークを計算
