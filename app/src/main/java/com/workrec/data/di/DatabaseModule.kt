@@ -67,4 +67,12 @@ object DatabaseModule {
     fun provideGoalDao(database: WorkoutDatabase): GoalDao {
         return database.goalDao()
     }
+
+    /**
+     * GoalProgressDaoのプロバイダー
+     */
+    @Provides
+    fun provideGoalProgressDao(database: WorkoutDatabase): GoalProgressDao {
+        return database.goalProgressDao()
+    }
 }

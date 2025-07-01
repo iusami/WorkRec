@@ -18,9 +18,10 @@ import com.workrec.data.database.entities.*
         WorkoutEntity::class,
         ExerciseEntity::class,
         ExerciseSetEntity::class,
-        GoalEntity::class
+        GoalEntity::class,
+        GoalProgressEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(
@@ -36,6 +37,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun exerciseSetDao(): ExerciseSetDao
     abstract fun goalDao(): GoalDao
+    abstract fun goalProgressDao(): GoalProgressDao
     
     companion object {
         const val DATABASE_NAME = "workout_database"

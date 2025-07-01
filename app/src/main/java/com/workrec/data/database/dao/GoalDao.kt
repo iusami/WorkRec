@@ -4,6 +4,7 @@ import androidx.room.*
 import com.workrec.data.database.entities.GoalEntity
 import com.workrec.domain.entities.GoalType
 import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.LocalDate
 
 /**
  * 目標データアクセスオブジェクト
@@ -68,14 +69,14 @@ interface GoalDao {
     /**
      * 目標の進捗を更新
      */
-    @Query("UPDATE goals SET currentValue = :currentValue WHERE id = :id")
-    suspend fun updateGoalProgress(id: Long, currentValue: Double)
+    @Query("UPDATE goals SET currentValue = :currentValue, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateGoalProgress(id: Long, currentValue: Double, updatedAt: LocalDate)
     
     /**
      * 目標を完了状態に変更
      */
-    @Query("UPDATE goals SET isCompleted = 1 WHERE id = :id")
-    suspend fun markGoalAsCompleted(id: Long)
+    @Query("UPDATE goals SET isCompleted = 1, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun markGoalAsCompleted(id: Long, updatedAt: LocalDate)
     
     /**
      * アクティブな目標数を取得
