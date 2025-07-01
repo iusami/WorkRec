@@ -38,6 +38,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
     
     kotlinOptions {
@@ -108,6 +109,9 @@ dependencies {
 
     // Charts - 進捗可視化用
     implementation("io.github.ehsannarmani:compose-charts:0.0.13")
+    
+    // Core Library Desugaring - java.time API support for API < 26
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
