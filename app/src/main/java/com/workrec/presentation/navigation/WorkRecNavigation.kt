@@ -31,7 +31,11 @@ import com.workrec.presentation.ui.screens.workout.WorkoutDetailScreen
 import com.workrec.presentation.ui.screens.calendar.CalendarScreen
 import com.workrec.presentation.ui.screens.progress.ProgressScreen
 import com.workrec.presentation.ui.screens.goal.GoalScreen
+import com.workrec.presentation.ui.screens.goal.AddGoalScreen
+import com.workrec.presentation.ui.screens.goal.GoalDetailScreen
 import com.workrec.presentation.viewmodel.AddWorkoutViewModel
+import com.workrec.presentation.viewmodel.AddGoalViewModel
+import com.workrec.presentation.viewmodel.GoalDetailViewModel
 import com.workrec.presentation.viewmodel.GoalViewModel
 import com.workrec.presentation.viewmodel.WorkoutViewModel
 
@@ -123,14 +127,39 @@ fun WorkRecNavigation() {
             }
             
             // 目標詳細画面
-            composable(Routes.GOAL_DETAIL) { backStackEntry ->
-                val goalId = backStackEntry.arguments?.getString("goalId")?.toLongOrNull() ?: 0L
-                // TODO: 目標詳細画面の実装
+            composable(
+                route = Routes.GOAL_DETAIL,
+                arguments = listOf(navArgument("goalId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                val goalId = backStackEntry.arguments?.getLong("goalId") ?: 0L
+                GoalDetailScreen(
+                    goalId = goalId,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onEditGoal = { editGoalId ->
+                        navController.navigate(Routes.ADD_GOAL) {
+                            // 編集モードでAddGoalScreenを開く（将来的に実装予定）
+                        }
+                    },
+                    onAddProgress = { progressGoalId ->
+                        // 進捗追加機能（将来的に実装予定）
+                    }
+                )
             }
             
             // 目標追加画面
             composable(Routes.ADD_GOAL) {
-                // TODO: 目標追加画面の実装
+                val addGoalViewModel: AddGoalViewModel = hiltViewModel()
+                AddGoalScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onGoalAdded = {
+                        navController.popBackStack()
+                    },
+                    viewModel = addGoalViewModel
+                )
             }
         }
     }
