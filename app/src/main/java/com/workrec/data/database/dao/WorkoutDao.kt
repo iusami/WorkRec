@@ -24,6 +24,12 @@ interface WorkoutDao {
     suspend fun getWorkoutById(id: Long): WorkoutEntity?
     
     /**
+     * 指定したIDのワークアウトを取得（Flow版）
+     */
+    @Query("SELECT * FROM workouts WHERE id = :id")
+    fun getWorkoutByIdFlow(id: Long): Flow<WorkoutEntity?>
+    
+    /**
      * 指定した日付のワークアウトを取得
      */
     @Query("SELECT * FROM workouts WHERE date = :date ORDER BY id DESC")

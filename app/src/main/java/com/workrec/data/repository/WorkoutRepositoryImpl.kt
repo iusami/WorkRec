@@ -38,6 +38,12 @@ class WorkoutRepositoryImpl @Inject constructor(
         return workoutEntity.toDomainModelWithExercises()
     }
 
+    override fun getWorkoutByIdFlow(id: Long): Flow<Workout?> {
+        return workoutDao.getWorkoutByIdFlow(id).map { workoutEntity ->
+            workoutEntity?.toDomainModelWithExercises()
+        }
+    }
+
     override suspend fun getWorkoutsByDate(date: LocalDate): List<Workout> {
         return workoutDao.getWorkoutsByDate(date).map { workoutEntity ->
             workoutEntity.toDomainModelWithExercises()

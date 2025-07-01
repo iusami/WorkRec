@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import com.workrec.R
 import com.workrec.presentation.ui.screens.workout.WorkoutListScreen
 import com.workrec.presentation.ui.screens.workout.AddWorkoutScreen
+import com.workrec.presentation.ui.screens.workout.WorkoutDetailScreen
 import com.workrec.presentation.ui.screens.calendar.CalendarScreen
 import com.workrec.presentation.ui.screens.progress.ProgressScreen
 import com.workrec.presentation.ui.screens.goal.GoalScreen
@@ -69,7 +70,17 @@ fun WorkRecNavigation() {
             // ワークアウト詳細画面
             composable(Routes.WORKOUT_DETAIL) { backStackEntry ->
                 val workoutId = backStackEntry.arguments?.getString("workoutId")?.toLongOrNull() ?: 0L
-                // TODO: ワークアウト詳細画面の実装
+                WorkoutDetailScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToEdit = { editWorkoutId ->
+                        navController.navigate(Routes.ADD_WORKOUT) {
+                            // 編集モードでAddWorkoutScreenを開く
+                            // 実際の編集機能は将来的にAddWorkoutScreenで実装予定
+                        }
+                    }
+                )
             }
             
             // ワークアウト追加画面

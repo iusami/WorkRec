@@ -21,6 +21,11 @@ interface WorkoutRepository {
     suspend fun getWorkoutById(id: Long): Workout?
     
     /**
+     * 指定したIDのワークアウトを取得（Flow版）
+     */
+    fun getWorkoutByIdFlow(id: Long): Flow<Workout?>
+    
+    /**
      * 指定した日付のワークアウトを取得
      */
     suspend fun getWorkoutsByDate(date: LocalDate): List<Workout>
