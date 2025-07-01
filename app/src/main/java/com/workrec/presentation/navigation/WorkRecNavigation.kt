@@ -18,10 +18,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.workrec.R
 import com.workrec.presentation.ui.screens.workout.WorkoutListScreen
 import com.workrec.presentation.ui.screens.workout.AddWorkoutScreen
@@ -68,8 +70,10 @@ fun WorkRecNavigation() {
             }
             
             // ワークアウト詳細画面
-            composable(Routes.WORKOUT_DETAIL) { backStackEntry ->
-                val workoutId = backStackEntry.arguments?.getString("workoutId")?.toLongOrNull() ?: 0L
+            composable(
+                route = Routes.WORKOUT_DETAIL,
+                arguments = listOf(navArgument("workoutId") { type = NavType.LongType })
+            ) { backStackEntry ->
                 WorkoutDetailScreen(
                     onNavigateBack = {
                         navController.popBackStack()
