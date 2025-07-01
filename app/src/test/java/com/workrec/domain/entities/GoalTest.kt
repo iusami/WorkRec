@@ -152,7 +152,7 @@ class GoalTest {
     // テストヘルパーメソッド
     private fun createTestGoal(
         id: Long = 1L,
-        type: GoalType = GoalType.WEIGHT,
+        type: GoalType = GoalType.STRENGTH,
         title: String = "ベンチプレス100kg",
         description: String? = "テスト目標",
         targetValue: Double = 100.0,
@@ -160,7 +160,8 @@ class GoalTest {
         unit: String = "kg",
         deadline: LocalDate? = LocalDate(2024, 12, 31),
         isCompleted: Boolean = false,
-        createdAt: LocalDate = LocalDate(2024, 1, 1)
+        createdAt: LocalDate = LocalDate(2024, 1, 1),
+        updatedAt: LocalDate = LocalDate(2024, 1, 1)
     ) = Goal(
         id = id,
         type = type,
@@ -171,6 +172,7 @@ class GoalTest {
         unit = unit,
         deadline = deadline,
         isCompleted = isCompleted,
-        createdAt = createdAt
+        createdAt = createdAt,
+        updatedAt = updatedAt
     )
 }

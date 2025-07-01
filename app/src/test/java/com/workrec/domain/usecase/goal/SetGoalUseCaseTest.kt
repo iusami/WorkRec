@@ -194,7 +194,7 @@ class SetGoalUseCaseTest {
     private fun createValidTestGoal(): Goal {
         return Goal(
             id = 0L,
-            type = GoalType.WEIGHT,
+            type = GoalType.STRENGTH,
             title = "ベンチプレス100kg",
             description = "目標説明",
             targetValue = 100.0,
@@ -202,7 +202,8 @@ class SetGoalUseCaseTest {
             unit = "kg",
             deadline = LocalDate(2024, 12, 31),
             isCompleted = false,
-            createdAt = LocalDate(2024, 1, 1)
+            createdAt = LocalDate(2024, 1, 1),
+            updatedAt = LocalDate(2024, 1, 1)
         )
     }
 }
