@@ -15,6 +15,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.todayIn
+import com.workrec.domain.usecase.calendar.GetWorkoutDatesUseCase
+import com.workrec.domain.usecase.calendar.GetWorkoutsByDateUseCase
 import javax.inject.Inject
 
 /**
@@ -23,9 +25,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
-    // TODO: Phase 2で追加予定
-    // private val getWorkoutDatesUseCase: GetWorkoutDatesUseCase,
-    // private val getWorkoutsByDateUseCase: GetWorkoutsByDateUseCase
+    private val getWorkoutDatesUseCase: GetWorkoutDatesUseCase,
+    private val getWorkoutsByDateUseCase: GetWorkoutsByDateUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarUiState())
@@ -64,27 +65,18 @@ class CalendarViewModel @Inject constructor(
     private fun loadWorkoutDates() {
         viewModelScope.launch {
             try {
-                // TODO: Phase 2で実装 - 実際のワークアウト日付を取得
-                // getWorkoutDatesUseCase()
-                //     .catch { exception ->
-                //         handleError("ワークアウト日付の読み込みに失敗しました: ${exception.message}")
-                //     }
-                //     .onEach { dates ->
-                //         _uiState.value = _uiState.value.copy(
-                //             workoutDates = dates.toSet(),
-                //             isLoading = false
-                //         )
-                //         calculateStreaks(dates)
-                //     }
-                //     .launchIn(this)
-                
-                // 一時的なモックデータ
-                val mockWorkoutDates = generateMockWorkoutDates()
-                _uiState.value = _uiState.value.copy(
-                    workoutDates = mockWorkoutDates,
-                    isLoading = false
-                )
-                calculateStreaks(mockWorkoutDates.toList())
+                getWorkoutDatesUseCase()
+                    .catch { exception ->
+                        handleError("ワークアウト日付の読み込みに失敗しました: ${exception.message}")
+                    }
+                    .onEach { dates ->
+                        _uiState.value = _uiState.value.copy(
+                            workoutDates = dates,
+                            isLoading = false
+                        )
+                        calculateStreaks(dates.toList())
+                    }
+                    .launchIn(this)
                 
             } catch (exception: Exception) {
                 handleError("ワークアウトデータの読み込みに失敗しました: ${exception.message}")
@@ -100,34 +92,17 @@ class CalendarViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isLoadingWorkouts = true)
                 
-                // TODO: Phase 2で実装 - 実際のワークアウトデータを取得
-                // getWorkoutsByDateUseCase(date)
-                //     .catch { exception ->
-                //         handleError("ワークアウトの読み込みに失敗しました: ${exception.message}")
-                //     }
-                //     .onEach { workouts ->
-                //         _uiState.value = _uiState.value.copy(
-                //             selectedDateWorkouts = workouts.map { it.title }, // 簡略化
-                //             isLoadingWorkouts = false
-                //         )
-                //     }
-                //     .launchIn(this)
-                
-                // 一時的なモックデータ
-                val hasWorkout = _uiState.value.workoutDates.contains(date)
-                val mockWorkouts = if (hasWorkout) {
-                    listOf("ベンチプレス", "スクワット", "デッドリフト")
-                } else {
-                    emptyList()
-                }
-                
-                // 実際のデータ読み込みをシミュレート
-                kotlinx.coroutines.delay(500)
-                
-                _uiState.value = _uiState.value.copy(
-                    selectedDateWorkouts = mockWorkouts,
-                    isLoadingWorkouts = false
-                )
+                getWorkoutsByDateUseCase.getWorkoutTitlesForDate(date)
+                    .catch { exception ->
+                        handleError("ワークアウトの読み込みに失敗しました: ${exception.message}")
+                    }
+                    .onEach { workoutTitles ->
+                        _uiState.value = _uiState.value.copy(
+                            selectedDateWorkouts = workoutTitles,
+                            isLoadingWorkouts = false
+                        )
+                    }
+                    .launchIn(this)
                 
             } catch (exception: Exception) {
                 handleError("ワークアウトの読み込みに失敗しました: ${exception.message}")
@@ -202,29 +177,6 @@ class CalendarViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(errorMessage = null)
     }
 
-    /**
-     * モックワークアウト日付を生成（デモ用）
-     */
-    private fun generateMockWorkoutDates(): Set<LocalDate> {
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        val mockDates = mutableSetOf<LocalDate>()
-        
-        // 過去30日間でランダムにワークアウト日を生成
-        repeat(15) { i ->
-            val randomOffset = (0..30).random()
-            val date = LocalDate(
-                today.year,
-                today.month,
-                maxOf(1, today.dayOfMonth - randomOffset)
-            )
-            mockDates.add(date)
-        }
-        
-        // 今日も含める
-        mockDates.add(today)
-        
-        return mockDates
-    }
 }
 
 /**
