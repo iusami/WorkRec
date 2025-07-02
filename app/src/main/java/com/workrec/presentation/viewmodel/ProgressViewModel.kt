@@ -5,8 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.workrec.domain.entities.ProgressData
 import com.workrec.domain.entities.TimePeriod
 import com.workrec.domain.entities.WorkoutStatistics
+import com.workrec.domain.entities.GoalProgress
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlinx.datetime.daysUntil
 import com.workrec.domain.usecase.progress.GetProgressOverTimeUseCase
 import com.workrec.domain.usecase.progress.GetWorkoutStatisticsUseCase
+import com.workrec.domain.usecase.goal.GetGoalProgressUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +30,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ProgressViewModel @Inject constructor(
     private val getProgressOverTimeUseCase: GetProgressOverTimeUseCase,
-    private val getWorkoutStatisticsUseCase: GetWorkoutStatisticsUseCase
+    private val getWorkoutStatisticsUseCase: GetWorkoutStatisticsUseCase,
+    private val getGoalProgressUseCase: GetGoalProgressUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProgressUiState())
@@ -100,7 +107,71 @@ class ProgressViewModel @Inject constructor(
                     )
                 }
                 .launchIn(this)
+                
+            // 目標進捗データを個別に取得
+            getGoalProgressUseCase.getAllGoals()
+                .catch { exception ->
+                    // 目標データの取得エラーは警告レベルで処理（進捗画面の表示は継続）
+                    println("Warning: 目標データの読み込みに失敗: ${exception.message}")
+                }
+                .onEach { goals ->
+                    // GoalをGoalProgressに変換
+                    val goalProgressList = goals.filter { !it.isCompleted }.map { goal ->
+                        convertGoalToGoalProgress(goal)
+                    }
+                    
+                    // 目標データが取得できた場合、ProgressDataに統合
+                    val currentProgressData = _uiState.value.progressData
+                    if (currentProgressData != null) {
+                        val updatedProgressData = currentProgressData.copy(
+                            goalProgress = goalProgressList
+                        )
+                        _uiState.value = _uiState.value.copy(
+                            progressData = updatedProgressData
+                        )
+                    } else {
+                        // ProgressDataがまだない場合、目標のみのProgressDataを作成
+                        val goalOnlyProgressData = ProgressData(
+                            workoutStatistics = WorkoutStatistics(
+                                period = _uiState.value.selectedTimePeriod,
+                                totalWorkouts = 0,
+                                totalVolume = 0.0,
+                                averageVolume = 0.0,
+                                averageDuration = 0,
+                                totalSets = 0,
+                                mostActiveDay = "",
+                                workoutFrequency = 0.0,
+                                volumeTrend = emptyList()
+                            ),
+                            goalProgress = goalProgressList,
+                            weeklyTrend = emptyList(),
+                            personalRecords = emptyList()
+                        )
+                        _uiState.value = _uiState.value.copy(
+                            progressData = goalOnlyProgressData
+                        )
+                    }
+                }
+                .launchIn(this)
         }
+    }
+    
+    /**
+     * GoalをGoalProgressに変換
+     */
+    private fun convertGoalToGoalProgress(goal: com.workrec.domain.entities.Goal): GoalProgress {
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        
+        return GoalProgress(
+            goal = goal,
+            progressPercentage = goal.progressPercentage,
+            remainingDays = goal.deadline?.let { deadline ->
+                val daysDifference = today.daysUntil(deadline)
+                if (daysDifference >= 0) daysDifference else null
+            },
+            isOnTrack = goal.progressPercentage >= 0.7f, // 70%以上で順調と判定
+            projectedCompletion = goal.deadline // 簡易実装
+        )
     }
 }
 

@@ -4,21 +4,24 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.workrec.domain.entities.*
 import com.workrec.domain.usecase.workout.AddWorkoutUseCase
-import dagger.hilt.android.lifecycle.HiltViewModel  // 一時的に無効化
+import com.workrec.domain.usecase.goal.UpdateGoalOnWorkoutUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
-import javax.inject.Inject  // 一時的に無効化
+import javax.inject.Inject
 
 /**
- * ワークアウト追加画面のViewModel（一時的にManual DIに変更）
+ * ワークアウト追加画面のViewModel
+ * ワークアウト保存と目標進捗の自動更新を統合
  */
 @HiltViewModel
 class AddWorkoutViewModel @Inject constructor(
-    private val addWorkoutUseCase: AddWorkoutUseCase
+    private val addWorkoutUseCase: AddWorkoutUseCase,
+    private val updateGoalOnWorkoutUseCase: UpdateGoalOnWorkoutUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddWorkoutUiState())
@@ -107,10 +110,22 @@ class AddWorkoutViewModel @Inject constructor(
             
             addWorkoutUseCase(workout)
                 .onSuccess {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isWorkoutSaved = true
-                    )
+                    // ワークアウト保存成功後、目標進捗を自動更新
+                    updateGoalOnWorkoutUseCase(workout)
+                        .onSuccess {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                isWorkoutSaved = true
+                            )
+                        }
+                        .onFailure { goalUpdateException ->
+                            // 目標更新失敗は警告扱い（ワークアウト保存は成功している）
+                            println("Warning: 目標進捗の自動更新に失敗: ${goalUpdateException.message}")
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                isWorkoutSaved = true
+                            )
+                        }
                 }
                 .onFailure { exception ->
                     _uiState.value = _uiState.value.copy(
