@@ -3,6 +3,7 @@ package com.workrec.presentation.ui.screens.progress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -19,6 +20,7 @@ import com.workrec.domain.entities.TimePeriod
 import com.workrec.presentation.ui.components.*
 import com.workrec.presentation.ui.components.GoalProgressData
 import com.workrec.presentation.viewmodel.ProgressViewModel
+import com.workrec.presentation.ui.utils.rememberScrollAwareAnimationState
 
 /**
  * 進捗画面 - 包括的なフィットネス進捗ダッシュボード
@@ -141,7 +143,12 @@ private fun ProgressContent(
     onTimePeriodSelected: (TimePeriod) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // スクロール状態を監視
+    val listState = rememberLazyListState()
+    val scrollAwareState = rememberScrollAwareAnimationState(listState)
+    
     LazyColumn(
+        state = listState,
         modifier = modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -207,7 +214,8 @@ private fun ProgressContent(
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
                         AnimatedProgressWave(
-                            goalProgress = goalProgress.first()
+                            goalProgress = goalProgress.first(),
+                            shouldPlayAnimations = scrollAwareState.shouldAnimate()
                         )
                     }
                 }
@@ -217,7 +225,8 @@ private fun ProgressContent(
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
                         GoalMilestonesTimeline(
-                            goalProgress = goalProgress.first()
+                            goalProgress = goalProgress.first(),
+                            shouldPlayAnimations = scrollAwareState.shouldAnimate()
                         )
                     }
                 }

@@ -28,15 +28,19 @@ import kotlin.math.*
 @Composable
 fun AnimatedProgressWave(
     goalProgress: GoalProgress,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shouldPlayAnimations: Boolean = true
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "wave_animation")
     
     val waveOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 2 * PI.toFloat(),
+        targetValue = if (shouldPlayAnimations) 2 * PI.toFloat() else 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
+            animation = tween(
+                durationMillis = if (shouldPlayAnimations) 3000 else Int.MAX_VALUE,
+                easing = LinearEasing
+            ),
             repeatMode = RepeatMode.Restart
         ),
         label = "wave_offset"
@@ -256,25 +260,32 @@ fun PulsingProgressIndicator(
     progress: Float,
     size: androidx.compose.ui.unit.Dp = 80.dp,
     color: Color = MaterialTheme.colorScheme.primary,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shouldPlayAnimations: Boolean = true
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_animation")
     
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.2f,
+        targetValue = if (shouldPlayAnimations) 1.2f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            animation = tween(
+                durationMillis = if (shouldPlayAnimations) 1500 else Int.MAX_VALUE,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse_scale"
     )
     
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.1f,
+        initialValue = if (shouldPlayAnimations) 0.3f else 0.2f,
+        targetValue = if (shouldPlayAnimations) 0.1f else 0.2f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            animation = tween(
+                durationMillis = if (shouldPlayAnimations) 1500 else Int.MAX_VALUE,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse_alpha"
@@ -335,15 +346,19 @@ fun PulsingProgressIndicator(
 fun GoalAchievementAnimation(
     isVisible: Boolean,
     modifier: Modifier = Modifier,
+    shouldPlayAnimations: Boolean = true,
     onAnimationComplete: () -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "achievement_animation")
     
     val scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
+        initialValue = if (shouldPlayAnimations) 0.8f else 1f,
+        targetValue = if (shouldPlayAnimations) 1.2f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+            animation = tween(
+                durationMillis = if (shouldPlayAnimations) 800 else Int.MAX_VALUE,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "scale_animation"
@@ -351,9 +366,12 @@ fun GoalAchievementAnimation(
     
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 360f,
+        targetValue = if (shouldPlayAnimations) 360f else 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2000, easing = LinearEasing),
+            animation = tween(
+                durationMillis = if (shouldPlayAnimations) 2000 else Int.MAX_VALUE,
+                easing = LinearEasing
+            ),
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation_animation"

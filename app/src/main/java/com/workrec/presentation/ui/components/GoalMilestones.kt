@@ -31,7 +31,8 @@ import kotlinx.datetime.LocalDate
 @Composable
 fun GoalMilestonesTimeline(
     goalProgress: GoalProgress,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shouldPlayAnimations: Boolean = true
 ) {
     val milestones = remember(goalProgress) {
         generateMilestones(goalProgress)
@@ -86,7 +87,8 @@ fun GoalMilestonesTimeline(
                         MilestoneItem(
                             milestone = milestone,
                             isFirst = milestones.first() == milestone,
-                            isLast = milestones.last() == milestone
+                            isLast = milestones.last() == milestone,
+                            shouldPlayAnimations = shouldPlayAnimations
                         )
                     }
                 }
@@ -104,7 +106,8 @@ fun GoalMilestonesTimeline(
 private fun MilestoneItem(
     milestone: Milestone,
     isFirst: Boolean = false,
-    isLast: Boolean = false
+    isLast: Boolean = false,
+    shouldPlayAnimations: Boolean = true
 ) {
     var animationPlayed by remember { mutableStateOf(false) }
     val animatedScale by animateFloatAsState(
@@ -151,7 +154,8 @@ private fun MilestoneItem(
             // マイルストーンマーカー
             MilestoneMarker(
                 milestone = milestone,
-                scale = animatedScale
+                scale = animatedScale,
+                shouldPlayAnimations = shouldPlayAnimations
             )
             
             // 下のライン
@@ -192,7 +196,8 @@ private fun MilestoneItem(
 @Composable
 private fun MilestoneMarker(
     milestone: Milestone,
-    scale: Float
+    scale: Float,
+    shouldPlayAnimations: Boolean = true
 ) {
     Box(
         modifier = Modifier
@@ -217,13 +222,15 @@ private fun MilestoneMarker(
                 )
             }
             MilestoneStatus.CURRENT -> {
-                // 脈動するドット
+                // 脈動するドット（スクロール制御対応）
                 val infiniteTransition = rememberInfiniteTransition(label = "pulse")
                 val alpha by infiniteTransition.animateFloat(
-                    initialValue = 0.3f,
-                    targetValue = 1f,
+                    initialValue = if (shouldPlayAnimations) 0.3f else 0.6f,
+                    targetValue = if (shouldPlayAnimations) 1f else 0.6f,
                     animationSpec = infiniteRepeatable(
-                        animation = tween(1000),
+                        animation = tween(
+                            durationMillis = if (shouldPlayAnimations) 1000 else Int.MAX_VALUE
+                        ),
                         repeatMode = RepeatMode.Reverse
                     ),
                     label = "alpha"
