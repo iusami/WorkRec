@@ -160,35 +160,65 @@ private fun ProgressContent(
             }
         }
 
-        // 目標進捗
+        // 高度な目標進捗セクション
         uiState.progressData?.goalProgress?.let { goalProgress ->
             if (goalProgress.isNotEmpty()) {
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = "目標進捗",
-                                style = MaterialTheme.typography.titleLarge,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                            
-                            val goalData = goalProgress.map { progress ->
-                                GoalProgressData(
-                                    progress = progress.progressPercentage,
-                                    title = progress.goal.title,
-                                    subtitle = "${progress.goal.currentValue.toInt()}/${progress.goal.targetValue.toInt()} ${progress.goal.unit}"
-                                )
-                            }
-                            
-                            GoalProgressGrid(goals = goalData)
+                    Text(
+                        text = "目標進捗",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                
+                // 高度な目標カードリスト
+                items(goalProgress.take(3)) { progress ->
+                    AdvancedGoalCard(
+                        goalProgress = progress,
+                        onClick = { /* 目標詳細画面へ */ },
+                        onUpdateProgress = { /* 進捗更新機能 */ }
+                    )
+                }
+                
+                // 最初の目標の予測チャート
+                if (goalProgress.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        GoalPredictionChart(
+                            goalProgress = goalProgress.first(),
+                            showPrediction = true
+                        )
+                    }
+                }
+                
+                // 目標カテゴリ別ダッシュボード
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    GoalCategoryDashboard(
+                        goalProgressList = goalProgress,
+                        onCategoryClick = { goalType ->
+                            // カテゴリ別目標画面へのナビゲーション
                         }
+                    )
+                }
+                
+                // 進捗波形アニメーション（最初の目標）
+                if (goalProgress.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        AnimatedProgressWave(
+                            goalProgress = goalProgress.first()
+                        )
+                    }
+                }
+                
+                // マイルストーンタイムライン（最初の目標）
+                if (goalProgress.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        GoalMilestonesTimeline(
+                            goalProgress = goalProgress.first()
+                        )
                     }
                 }
             }
