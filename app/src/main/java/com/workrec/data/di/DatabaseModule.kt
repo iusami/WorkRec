@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.workrec.data.database.WorkoutDatabase
 import com.workrec.data.database.dao.*
+import com.workrec.data.database.migrations.MIGRATION_2_3
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,7 +33,8 @@ object DatabaseModule {
             WorkoutDatabase::class.java,
             WorkoutDatabase.DATABASE_NAME
         )
-        .fallbackToDestructiveMigration() // 開発中のみ使用
+        .addMigrations(MIGRATION_2_3)
+        .fallbackToDestructiveMigration() // 開発中のみ使用（未定義マイグレーション用）
         .build()
     }
 
@@ -74,5 +76,13 @@ object DatabaseModule {
     @Provides
     fun provideGoalProgressDao(database: WorkoutDatabase): GoalProgressDao {
         return database.goalProgressDao()
+    }
+
+    /**
+     * ExerciseTemplateDaoのプロバイダー
+     */
+    @Provides
+    fun provideExerciseTemplateDao(database: WorkoutDatabase): ExerciseTemplateDao {
+        return database.exerciseTemplateDao()
     }
 }

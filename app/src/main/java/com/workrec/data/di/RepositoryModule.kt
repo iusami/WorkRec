@@ -2,8 +2,10 @@ package com.workrec.data.di
 
 import com.workrec.data.repository.GoalRepositoryImpl
 import com.workrec.data.repository.WorkoutRepositoryImpl
+import com.workrec.data.repository.ExerciseTemplateRepositoryImpl
 import com.workrec.domain.repository.GoalRepository
 import com.workrec.domain.repository.WorkoutRepository
+import com.workrec.domain.repository.ExerciseTemplateRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -35,4 +37,13 @@ abstract class RepositoryModule {
     abstract fun bindGoalRepository(
         goalRepositoryImpl: GoalRepositoryImpl
     ): GoalRepository
+
+    /**
+     * ExerciseTemplateRepositoryの実装をバインド
+     */
+    @Binds
+    @Singleton
+    abstract fun bindExerciseTemplateRepository(
+        exerciseTemplateRepositoryImpl: ExerciseTemplateRepositoryImpl
+    ): ExerciseTemplateRepository
 }
