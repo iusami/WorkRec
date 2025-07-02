@@ -4,8 +4,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -79,11 +77,11 @@ fun GoalMilestonesTimeline(
             
             // マイルストーンタイムライン
             if (milestones.isNotEmpty()) {
-                LazyColumn(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(milestones) { milestone ->
+                    milestones.forEach { milestone ->
                         MilestoneItem(
                             milestone = milestone,
                             isFirst = milestones.first() == milestone,
