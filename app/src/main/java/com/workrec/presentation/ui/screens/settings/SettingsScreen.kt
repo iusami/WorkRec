@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Info
@@ -28,6 +29,7 @@ import com.workrec.presentation.viewmodel.SettingsViewModel
 @Composable
 fun SettingsScreen(
     onNavigateToExerciseManager: () -> Unit = {},
+    onNavigateBack: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -59,45 +61,54 @@ fun SettingsScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // ヘッダー
-        Text(
-            text = "設定",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
-
-        // 設定項目リスト
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("設定") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "戻る"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp)
         ) {
-            items(settingItems) { settingItem ->
-                SettingItemCard(
-                    settingItem = settingItem,
-                    onClick = {
-                        viewModel.onSettingItemClicked(settingItem.item)
-                        when (settingItem.item) {
-                            SettingItem.EXERCISE_MANAGER -> onNavigateToExerciseManager()
-                            SettingItem.APP_INFO -> {
-                                // TODO: アプリ情報ダイアログ表示
-                            }
-                            else -> {
-                                // 準備中項目は何もしない
+            // 設定項目リスト
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(settingItems) { settingItem ->
+                    SettingItemCard(
+                        settingItem = settingItem,
+                        onClick = {
+                            viewModel.onSettingItemClicked(settingItem.item)
+                            when (settingItem.item) {
+                                SettingItem.EXERCISE_MANAGER -> onNavigateToExerciseManager()
+                                SettingItem.APP_INFO -> {
+                                    // TODO: アプリ情報ダイアログ表示
+                                }
+                                else -> {
+                                    // 準備中項目は何もしない
+                                }
                             }
                         }
-                    }
-                )
-            }
-            
-            // アプリバージョン情報
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-                AppVersionInfo(viewModel = viewModel)
+                    )
+                }
+                
+                // アプリバージョン情報
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    AppVersionInfo(viewModel = viewModel)
+                }
             }
         }
     }

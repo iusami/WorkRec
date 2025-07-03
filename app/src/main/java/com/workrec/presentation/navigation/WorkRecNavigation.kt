@@ -185,6 +185,9 @@ fun WorkRecNavigation() {
                 SettingsScreen(
                     onNavigateToExerciseManager = {
                         navController.navigate(Routes.EXERCISE_MANAGER)
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
                     }
                 )
             }
