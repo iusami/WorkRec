@@ -31,6 +31,7 @@ fun ExerciseForm(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var showExercisePicker by remember { mutableStateOf(false) }
     
     Card(
         modifier = modifier.fillMaxWidth()
@@ -60,7 +61,7 @@ fun ExerciseForm(
                 }
             }
 
-            // エクササイズ名入力とテンプレート選択
+            // エクササイズ名表示と選択ボタン
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -68,61 +69,35 @@ fun ExerciseForm(
             ) {
                 OutlinedTextField(
                     value = exercise.name,
-                    onValueChange = { newName ->
-                        onExerciseUpdate(exercise.copy(name = newName))
-                    },
+                    onValueChange = { /* 読み取り専用 */ },
                     label = { Text("エクササイズ名") },
-                    placeholder = { Text("例: ベンチプレス") },
-                    modifier = Modifier.weight(1f)
+                    placeholder = { Text("エクササイズを選択してください") },
+                    modifier = Modifier.weight(1f),
+                    readOnly = true,
+                    enabled = false
                 )
                 
-                IconButton(
-                    onClick = onNavigateToExerciseManager
+                Button(
+                    onClick = { showExercisePicker = true }
                 ) {
                     Icon(
                         imageVector = Icons.Default.List,
-                        contentDescription = "エクササイズテンプレートから選択",
-                        tint = MaterialTheme.colorScheme.primary
+                        contentDescription = "エクササイズを選択"
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("選択")
                 }
             }
 
-            // カテゴリー選択
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
-            ) {
-                OutlinedTextField(
-                    value = exercise.category.displayName,
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("カテゴリー") },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "カテゴリーを選択"
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                )
-
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    ExerciseCategory.values().forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category.displayName) },
-                            onClick = {
-                                onExerciseUpdate(exercise.copy(category = category))
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
+            // カテゴリー表示（読み取り専用）
+            OutlinedTextField(
+                value = exercise.category.displayName,
+                onValueChange = { },
+                readOnly = true,
+                label = { Text("カテゴリー") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false
+            )
 
             // セット入力セクション
             Row(
@@ -204,6 +179,22 @@ fun ExerciseForm(
                 )
             }
         }
+    }
+
+    // エクササイズ選択ダイアログ
+    if (showExercisePicker) {
+        ExercisePickerDialog(
+            onExerciseSelected = { selectedTemplate ->
+                // エクササイズテンプレートからExerciseオブジェクトを作成
+                val updatedExercise = exercise.copy(
+                    name = selectedTemplate.name,
+                    category = selectedTemplate.category
+                )
+                onExerciseUpdate(updatedExercise)
+                showExercisePicker = false
+            },
+            onDismiss = { showExercisePicker = false }
+        )
     }
 }
 
