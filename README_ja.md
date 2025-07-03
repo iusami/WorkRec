@@ -22,24 +22,24 @@ WorkRecは、Androidスマートフォン向けの包括的なフィットネス
 
 ```
 ┌─────────────────────────────────────────┐
-│          プレゼンテーション層             │
+│            Presentation Layer           │
 │  • Jetpack Compose UI                   │
 │  • ViewModels                           │
 │  • Navigation                           │
 └─────────────────────────────────────────┘
                      │
 ┌─────────────────────────────────────────┐
-│            ドメイン層                    │
-│  • Use Cases（ビジネスロジック）         │
-│  • ビジネスエンティティ                  │
-│  • Repositoryインターフェース            │
+│             Domain Layer                │
+│  • Use Cases (Business Logic)           │
+│  • Business Entities                    │
+│  • Repository Interfaces                │
 └─────────────────────────────────────────┘
                      │
 ┌─────────────────────────────────────────┐
-│             データ層                     │
-│  • Repository実装                       │
+│              Data Layer                 │
+│  • Repository Implementations           │
 │  • Room Database                        │
-│  • データエンティティ                    │
+│  • Data Entities                        │
 └─────────────────────────────────────────┘
 ```
 

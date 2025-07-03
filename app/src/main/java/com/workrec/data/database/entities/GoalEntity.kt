@@ -25,7 +25,8 @@ data class GoalEntity(
     val unit: String,
     val deadline: LocalDate? = null,
     val isCompleted: Boolean = false,
-    val createdAt: LocalDate
+    val createdAt: LocalDate,
+    val updatedAt: LocalDate
 )
 
 /**
@@ -42,7 +43,8 @@ fun GoalEntity.toDomainModel(): Goal {
         unit = unit,
         deadline = deadline,
         isCompleted = isCompleted,
-        createdAt = createdAt
+        createdAt = createdAt,
+        updatedAt = updatedAt
     )
 }
 
@@ -60,6 +62,7 @@ fun Goal.toEntity(): GoalEntity {
         unit = unit,
         deadline = deadline,
         isCompleted = isCompleted,
-        createdAt = createdAt
+        createdAt = createdAt,
+        updatedAt = updatedAt
     )
 }
