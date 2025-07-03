@@ -18,6 +18,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.workrec.R
 import com.workrec.domain.entities.*
 import com.workrec.presentation.viewmodel.ExerciseManagerViewModel
+import com.workrec.presentation.ui.components.EditExerciseDialog
+import com.workrec.presentation.ui.components.CustomExerciseDialog
 
 /**
  * エクササイズ管理画面
@@ -30,12 +32,19 @@ fun ExerciseManagerScreen(
     viewModel: ExerciseManagerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val editUiState by viewModel.editUiState.collectAsStateWithLifecycle()
     
     // 検索とフィルタの状態
     var showFilterDialog by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
+    
+    // Snackbar用の状態
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        },
         topBar = {
             TopAppBar(
                 title = { Text("エクササイズ管理") },
@@ -89,14 +98,24 @@ fun ExerciseManagerScreen(
                 )
             }
 
-            // エクササイズリスト
+            // エクササイズリスト（ローディング状態統合）
             when {
                 uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                text = "エクササイズを読み込み中...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 uiState.exercises.isEmpty() -> {
@@ -114,11 +133,38 @@ fun ExerciseManagerScreen(
                         items(uiState.exercises) { exercise ->
                             ExerciseTemplateCard(
                                 exerciseTemplate = exercise,
-                                onEdit = { viewModel.editExercise(exercise) },
+                                onEdit = { viewModel.openEditDialog(exercise) },
                                 onDelete = { viewModel.deleteExercise(exercise) }
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+    
+    // 編集処理中のローディングオーバーレイ
+    if (editUiState.isEditDialogVisible && uiState.isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = "エクササイズを保存中...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
         }
@@ -137,15 +183,66 @@ fun ExerciseManagerScreen(
         )
     }
 
-    // エクササイズ追加ダイアログ
+    // エクササイズ追加ダイアログ（強化版CustomExerciseDialog使用）
     if (showAddDialog) {
-        AddExerciseDialog(
-            onExerciseAdd = { exerciseTemplate ->
+        CustomExerciseDialog(
+            onExerciseCreated = { exerciseTemplate ->
                 viewModel.addCustomExercise(exerciseTemplate)
                 showAddDialog = false
             },
             onDismiss = { showAddDialog = false }
         )
+    }
+    
+    // エクササイズ編集ダイアログ（ローディング状態対応）
+    editUiState.editingExercise?.let { editingExercise ->
+        if (editUiState.isEditDialogVisible) {
+            EditExerciseDialog(
+                exerciseTemplate = editingExercise,
+                onExerciseSaved = { updatedExercise ->
+                    viewModel.saveEditedExercise(updatedExercise)
+                },
+                onDismiss = { viewModel.closeEditDialog() }
+            )
+        }
+    }
+    
+    // 編集操作結果のスナックバー表示
+    editUiState.operationResult?.let { result ->
+        when (result) {
+            is com.workrec.presentation.viewmodel.EditOperationResult.Success -> {
+                LaunchedEffect(result) {
+                    snackbarHostState.showSnackbar(
+                        message = result.message,
+                        actionLabel = "OK",
+                        duration = SnackbarDuration.Short
+                    )
+                    viewModel.clearEditOperationResult()
+                }
+            }
+            is com.workrec.presentation.viewmodel.EditOperationResult.Error -> {
+                LaunchedEffect(result) {
+                    snackbarHostState.showSnackbar(
+                        message = result.message,
+                        actionLabel = "閉じる",
+                        duration = SnackbarDuration.Long
+                    )
+                    viewModel.clearEditOperationResult()
+                }
+            }
+        }
+    }
+    
+    // エラーメッセージ表示（従来のエラーハンドリング）
+    uiState.errorMessage?.let { errorMessage ->
+        LaunchedEffect(errorMessage) {
+            snackbarHostState.showSnackbar(
+                message = errorMessage,
+                actionLabel = "閉じる",
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearError()
+        }
     }
 }
 
@@ -454,54 +551,5 @@ private fun ExerciseFilterDialog(
     )
 }
 
-/**
- * エクササイズ追加ダイアログ（簡易版）
- */
-@Composable
-private fun AddExerciseDialog(
-    onExerciseAdd: (ExerciseTemplate) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("カスタムエクササイズ追加") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("エクササイズ名") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                // その他のフィールド（簡易実装）
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        val newExercise = ExerciseTemplate(
-                            name = name,
-                            category = ExerciseCategory.OTHER,
-                            muscle = "その他",
-                            equipment = ExerciseEquipment.OTHER,
-                            difficulty = ExerciseDifficulty.BEGINNER,
-                            isUserCreated = true
-                        )
-                        onExerciseAdd(newExercise)
-                    }
-                },
-                enabled = name.isNotBlank()
-            ) {
-                Text("追加")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("キャンセル")
-            }
-        }
-    )
-}
+// 古いAddExerciseDialogは新しいCustomExerciseDialogで置き換えられました
+// /com/workrec/presentation/ui/components/CustomExerciseDialog.kt を使用

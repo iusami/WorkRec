@@ -163,7 +163,7 @@ fun ExercisePickerDialog(
         }
     }
 
-    // カスタムエクササイズ追加ダイアログ
+    // カスタムエクササイズ追加ダイアログ（強化版）
     if (showCustomDialog) {
         CustomExerciseDialog(
             onExerciseCreated = { exerciseTemplate ->
@@ -507,82 +507,5 @@ private fun EmptyExerciseState(
     }
 }
 
-/**
- * カスタムエクササイズ作成ダイアログ
- */
-@Composable
-private fun CustomExerciseDialog(
-    onExerciseCreated: (ExerciseTemplate) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(ExerciseCategory.OTHER) }
-    var selectedEquipment by remember { mutableStateOf(ExerciseEquipment.OTHER) }
-    var selectedDifficulty by remember { mutableStateOf(ExerciseDifficulty.BEGINNER) }
-    var muscle by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("カスタムエクササイズを作成") },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // エクササイズ名
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("エクササイズ名") },
-                    placeholder = { Text("例: マイエクササイズ") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                // 対象筋肉
-                OutlinedTextField(
-                    value = muscle,
-                    onValueChange = { muscle = it },
-                    label = { Text("対象筋肉") },
-                    placeholder = { Text("例: 大胸筋") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                // 説明
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("説明（任意）") },
-                    placeholder = { Text("エクササイズの説明") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (name.isNotBlank() && muscle.isNotBlank()) {
-                        val newExercise = ExerciseTemplate(
-                            name = name,
-                            category = selectedCategory,
-                            muscle = muscle,
-                            equipment = selectedEquipment,
-                            difficulty = selectedDifficulty,
-                            description = description.ifBlank { null },
-                            isUserCreated = true
-                        )
-                        onExerciseCreated(newExercise)
-                    }
-                },
-                enabled = name.isNotBlank() && muscle.isNotBlank()
-            ) {
-                Text("作成")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("キャンセル")
-            }
-        }
-    )
-}
+// 旧いCustomExerciseDialogは新しい強化版ファイルで置き換えられました
+// /com/workrec/presentation/ui/components/CustomExerciseDialog.kt を参照

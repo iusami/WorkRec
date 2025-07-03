@@ -43,6 +43,16 @@ class ExerciseManagerViewModel @Inject constructor(
     private val _exercises = MutableStateFlow<List<ExerciseTemplate>>(emptyList())
     val exercises = _exercises.asStateFlow()
     
+    // 編集状態管理
+    private val _editingExercise = MutableStateFlow<ExerciseTemplate?>(null)
+    val editingExercise = _editingExercise.asStateFlow()
+    
+    private val _isEditDialogVisible = MutableStateFlow(false)
+    val isEditDialogVisible = _isEditDialogVisible.asStateFlow()
+    
+    private val _editOperationResult = MutableStateFlow<EditOperationResult?>(null)
+    val editOperationResult = _editOperationResult.asStateFlow()
+    
     // 検索結果キャッシュ（パフォーマンス最適化）
     private val searchCache = ConcurrentHashMap<String, List<ExerciseTemplate>>()
     private val cacheTimeout = 5 * 60 * 1000L // 5分間キャッシュ
@@ -77,6 +87,23 @@ class ExerciseManagerViewModel @Inject constructor(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = ExerciseManagerUiState()
+    )
+    
+    // 編集用UI状態
+    val editUiState = combine(
+        editingExercise,
+        isEditDialogVisible,
+        editOperationResult
+    ) { editingExercise, isDialogVisible, operationResult ->
+        EditUiState(
+            editingExercise = editingExercise,
+            isEditDialogVisible = isDialogVisible,
+            operationResult = operationResult
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = EditUiState()
     )
 
     init {
@@ -143,9 +170,32 @@ class ExerciseManagerViewModel @Inject constructor(
     }
 
     /**
-     * エクササイズを編集
+     * 編集ダイアログを開く
      */
-    fun editExercise(exerciseTemplate: ExerciseTemplate) {
+    fun openEditDialog(exerciseTemplate: ExerciseTemplate) {
+        if (!exerciseTemplate.isUserCreated) {
+            _errorMessage.value = "事前定義されたエクササイズは編集できません"
+            return
+        }
+        
+        _editingExercise.value = exerciseTemplate
+        _isEditDialogVisible.value = true
+        clearEditOperationResult()
+    }
+    
+    /**
+     * 編集ダイアログを閉じる
+     */
+    fun closeEditDialog() {
+        _isEditDialogVisible.value = false
+        _editingExercise.value = null
+        clearEditOperationResult()
+    }
+    
+    /**
+     * エクササイズを保存（編集）
+     */
+    fun saveEditedExercise(exerciseTemplate: ExerciseTemplate) {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
@@ -158,16 +208,44 @@ class ExerciseManagerViewModel @Inject constructor(
                     // キャッシュをクリアして最新データを保証
                     clearCache()
                     loadExercises()
+                    
+                    // 成功結果を設定
+                    _editOperationResult.value = EditOperationResult.Success(
+                        message = "「${exerciseTemplate.name}」を正常に更新しました"
+                    )
+                    
+                    // ダイアログを閉じる
+                    closeEditDialog()
+                    
                 } else {
-                    _errorMessage.value = "事前定義されたエクササイズは編集できません"
+                    _editOperationResult.value = EditOperationResult.Error(
+                        message = "事前定義されたエクササイズは編集できません"
+                    )
                 }
                 
             } catch (e: Exception) {
-                _errorMessage.value = "エクササイズの編集に失敗しました: ${e.message}"
+                _editOperationResult.value = EditOperationResult.Error(
+                    message = "エクササイズの編集に失敗しました: ${e.message}"
+                )
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+    
+    /**
+     * 編集操作結果をクリア
+     */
+    fun clearEditOperationResult() {
+        _editOperationResult.value = null
+    }
+    
+    /**
+     * エクササイズを編集（従来の関数 - 互換性のため残す）
+     */
+    @Deprecated("Use saveEditedExercise instead")
+    fun editExercise(exerciseTemplate: ExerciseTemplate) {
+        saveEditedExercise(exerciseTemplate)
     }
 
     /**
@@ -348,3 +426,20 @@ private fun getActiveFiltersCount(filter: ExerciseFilter): Int {
     if (!filter.showUserCreated) count++
     return count
 }
+
+/**
+ * 編集操作の結果を表すsealed class
+ */
+sealed class EditOperationResult {
+    data class Success(val message: String) : EditOperationResult()
+    data class Error(val message: String) : EditOperationResult()
+}
+
+/**
+ * 編集用UI状態
+ */
+data class EditUiState(
+    val editingExercise: ExerciseTemplate? = null,
+    val isEditDialogVisible: Boolean = false,
+    val operationResult: EditOperationResult? = null
+)
