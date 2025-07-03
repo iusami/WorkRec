@@ -3,6 +3,7 @@ package com.workrec.presentation.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -19,6 +21,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.workrec.domain.entities.*
 import com.workrec.presentation.viewmodel.ExerciseManagerViewModel
+import kotlinx.coroutines.delay
 
 /**
  * エクササイズテンプレート選択ダイアログ
@@ -37,6 +40,13 @@ fun ExercisePickerDialog(
     // ダイアログの状態管理
     var selectedTab by remember { mutableStateOf(0) }
     var showCustomDialog by remember { mutableStateOf(false) }
+    var isDialogReady by remember { mutableStateOf(false) }
+    
+    // ダイアログ表示時の遅延読み込み初期化
+    LaunchedEffect(Unit) {
+        delay(100) // 100ms遅延でUIレスポンシブ性向上
+        isDialogReady = true
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -123,13 +133,25 @@ fun ExercisePickerDialog(
                     )
                 }
 
-                // エクササイズリスト
-                ExerciseListSection(
-                    exercises = uiState.exercises,
-                    isLoading = uiState.isLoading,
-                    onExerciseSelected = onExerciseSelected,
-                    modifier = Modifier.weight(1f)
-                )
+                // エクササイズリスト（遅延読み込み対応）
+                if (isDialogReady) {
+                    ExerciseListSection(
+                        exercises = uiState.exercises,
+                        isLoading = uiState.isLoading,
+                        onExerciseSelected = onExerciseSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    // 初期読み込み中プレースホルダー
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
 
                 // フッター（クイックフィルター）
                 QuickFilterSection(
@@ -175,7 +197,12 @@ private fun SearchBarSection(
         },
         trailingIcon = {
             if (searchQuery.isNotEmpty()) {
-                IconButton(onClick = { onSearchQueryChange("") }) {
+                IconButton(
+                    onClick = { onSearchQueryChange("") },
+                    modifier = Modifier.semantics {
+                        contentDescription = "検索クエリをクリア"
+                    }
+                ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "クリア"
@@ -183,7 +210,11 @@ private fun SearchBarSection(
                 }
             }
         },
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "エクササイズ検索フィールド"
+            },
         singleLine = true
     )
 }
@@ -260,12 +291,18 @@ private fun ExerciseListSection(
                 )
             }
             else -> {
+                val lazyListState = rememberLazyListState()
+                
                 LazyColumn(
+                    state = lazyListState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(exercises) { exercise ->
+                    items(
+                        items = exercises,
+                        key = { exercise -> exercise.id } // キーベースの最適化
+                    ) { exercise ->
                         ExercisePickerCard(
                             exerciseTemplate = exercise,
                             onSelect = { onExerciseSelected(exercise) }
@@ -288,7 +325,16 @@ private fun ExercisePickerCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "エクササイズ: ${exerciseTemplate.name}, " +
+                        "カテゴリー: ${exerciseTemplate.category.displayName}, " +
+                        "対象筋肉: ${exerciseTemplate.muscle}, " +
+                        "器具: ${exerciseTemplate.equipment.displayName}, " +
+                        "難易度: ${exerciseTemplate.difficulty.displayName}"
+                role = Role.Button
+            },
         onClick = onSelect
     ) {
         Column(

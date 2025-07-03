@@ -1,5 +1,7 @@
 package com.workrec.presentation.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -9,14 +11,19 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.workrec.domain.entities.*
+import kotlinx.coroutines.delay
 
 /**
  * エクササイズフォームコンポーネント
@@ -32,6 +39,26 @@ fun ExerciseForm(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showExercisePicker by remember { mutableStateOf(false) }
+    var exerciseJustSelected by remember { mutableStateOf(false) }
+    var showSuccessAnimation by remember { mutableStateOf(false) }
+    
+    // エクササイズ選択成功アニメーション
+    val successScale by animateFloatAsState(
+        targetValue = if (showSuccessAnimation) 1.1f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    )
+    
+    // エクササイズ名フィールドの色アニメーション
+    val fieldColor by animateColorAsState(
+        targetValue = if (exerciseJustSelected) 
+            MaterialTheme.colorScheme.primaryContainer 
+        else 
+            MaterialTheme.colorScheme.surface,
+        animationSpec = tween(durationMillis = 800)
+    )
     
     Card(
         modifier = modifier.fillMaxWidth()
@@ -61,9 +88,11 @@ fun ExerciseForm(
                 }
             }
 
-            // エクササイズ名表示と選択ボタン
+            // エクササイズ名表示と選択ボタン（アニメーション対応）
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .scale(successScale),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -74,11 +103,35 @@ fun ExerciseForm(
                     placeholder = { Text("エクササイズを選択してください") },
                     modifier = Modifier.weight(1f),
                     readOnly = true,
-                    enabled = false
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledContainerColor = fieldColor
+                    ),
+                    trailingIcon = {
+                        // エクササイズ選択済みの場合にチェックアイコン表示
+                        AnimatedVisibility(
+                            visible = exercise.name.isNotBlank(),
+                            enter = scaleIn() + fadeIn(),
+                            exit = scaleOut() + fadeOut()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "選択済み",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 )
                 
                 Button(
-                    onClick = { showExercisePicker = true }
+                    onClick = { showExercisePicker = true },
+                    modifier = Modifier.semantics {
+                        contentDescription = if (exercise.name.isBlank()) {
+                            "エクササイズを選択してください"
+                        } else {
+                            "現在選択中: ${exercise.name}。別のエクササイズを選択"
+                        }
+                    }
                 ) {
                     Icon(
                         imageVector = Icons.Default.List,
@@ -115,6 +168,9 @@ fun ExerciseForm(
                     onClick = {
                         val newSets = exercise.sets + ExerciseSet(reps = 0, weight = 0.0)
                         onExerciseUpdate(exercise.copy(sets = newSets))
+                    },
+                    modifier = Modifier.semantics {
+                        contentDescription = "新しいセットを追加。現在${exercise.sets.size}セット"
                     }
                 ) {
                     Icon(
@@ -154,20 +210,35 @@ fun ExerciseForm(
                     }
 
                     exercise.sets.forEachIndexed { index, set ->
-                        SetInputRow(
-                            setNumber = index + 1,
-                            exerciseSet = set,
-                            onSetUpdate = { updatedSet ->
-                                val newSets = exercise.sets.toMutableList()
-                                newSets[index] = updatedSet
-                                onExerciseUpdate(exercise.copy(sets = newSets))
-                            },
-                            onSetDelete = {
-                                val newSets = exercise.sets.toMutableList()
-                                newSets.removeAt(index)
-                                onExerciseUpdate(exercise.copy(sets = newSets))
-                            }
-                        )
+                        // 各セット行にアニメーションを適用
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = slideInVertically(
+                                initialOffsetY = { -it },
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy
+                                )
+                            ) + fadeIn(),
+                            exit = slideOutVertically(
+                                targetOffsetY = { -it },
+                                animationSpec = spring()
+                            ) + fadeOut()
+                        ) {
+                            SetInputRow(
+                                setNumber = index + 1,
+                                exerciseSet = set,
+                                onSetUpdate = { updatedSet ->
+                                    val newSets = exercise.sets.toMutableList()
+                                    newSets[index] = updatedSet
+                                    onExerciseUpdate(exercise.copy(sets = newSets))
+                                },
+                                onSetDelete = {
+                                    val newSets = exercise.sets.toMutableList()
+                                    newSets.removeAt(index)
+                                    onExerciseUpdate(exercise.copy(sets = newSets))
+                                }
+                            )
+                        }
                     }
                 }
             } else {
@@ -191,10 +262,24 @@ fun ExerciseForm(
                     category = selectedTemplate.category
                 )
                 onExerciseUpdate(updatedExercise)
+                
+                // 成功アニメーションを開始
+                exerciseJustSelected = true
+                showSuccessAnimation = true
                 showExercisePicker = false
             },
             onDismiss = { showExercisePicker = false }
         )
+    }
+    
+    // アニメーション効果のリセット
+    LaunchedEffect(exerciseJustSelected) {
+        if (exerciseJustSelected) {
+            delay(500) // 0.5秒後にスケールアニメーションを戻す
+            showSuccessAnimation = false
+            delay(800) // さらに0.8秒後に色アニメーションを戻す
+            exerciseJustSelected = false
+        }
     }
 }
 

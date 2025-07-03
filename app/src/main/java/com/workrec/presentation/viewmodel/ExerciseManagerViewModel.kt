@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * エクササイズ管理ViewModel
@@ -41,6 +42,11 @@ class ExerciseManagerViewModel @Inject constructor(
     // エクササイズリスト
     private val _exercises = MutableStateFlow<List<ExerciseTemplate>>(emptyList())
     val exercises = _exercises.asStateFlow()
+    
+    // 検索結果キャッシュ（パフォーマンス最適化）
+    private val searchCache = ConcurrentHashMap<String, List<ExerciseTemplate>>()
+    private val cacheTimeout = 5 * 60 * 1000L // 5分間キャッシュ
+    private val cacheTimestamps = ConcurrentHashMap<String, Long>()
 
     // UI状態
     val uiState = combine(
@@ -122,6 +128,9 @@ class ExerciseManagerViewModel @Inject constructor(
                 val userCreatedExercise = exerciseTemplate.copy(isUserCreated = true)
                 exerciseTemplateRepository.saveExerciseTemplate(userCreatedExercise)
                 
+                // キャッシュをクリアして最新データを保証
+                clearCache()
+                
                 // リストを再読み込み
                 loadExercises()
                 
@@ -145,6 +154,9 @@ class ExerciseManagerViewModel @Inject constructor(
                 // ユーザー作成のエクササイズのみ編集可能
                 if (exerciseTemplate.isUserCreated) {
                     exerciseTemplateRepository.updateExerciseTemplate(exerciseTemplate)
+                    
+                    // キャッシュをクリアして最新データを保証
+                    clearCache()
                     loadExercises()
                 } else {
                     _errorMessage.value = "事前定義されたエクササイズは編集できません"
@@ -170,6 +182,9 @@ class ExerciseManagerViewModel @Inject constructor(
                 // ユーザー作成のエクササイズのみ削除可能
                 if (exerciseTemplate.isUserCreated) {
                     exerciseTemplateRepository.deleteExerciseTemplateById(exerciseTemplate.id)
+                    
+                    // キャッシュをクリアして最新データを保証
+                    clearCache()
                     loadExercises()
                 } else {
                     _errorMessage.value = "事前定義されたエクササイズは削除できません"
@@ -213,7 +228,7 @@ class ExerciseManagerViewModel @Inject constructor(
     }
 
     /**
-     * 検索・フィルタリングされたエクササイズを取得
+     * 検索・フィルタリングされたエクササイズを取得（キャッシュ対応）
      */
     private fun searchExercises(
         query: String,
@@ -225,11 +240,25 @@ class ExerciseManagerViewModel @Inject constructor(
                 _isLoading.value = true
                 _errorMessage.value = null
                 
+                val cacheKey = generateCacheKey(query, filter, sortOrder)
+                
+                // キャッシュチェック
+                val cachedResult = getCachedResult(cacheKey)
+                if (cachedResult != null) {
+                    _exercises.value = cachedResult
+                    _isLoading.value = false
+                    return@launch
+                }
+                
+                // キャッシュにない場合は新しく検索
                 val searchFilter = filter.copy(searchQuery = query)
                 val exerciseList = exerciseTemplateRepository.searchExerciseTemplates(
                     filter = searchFilter,
                     sortOrder = sortOrder
                 )
+                
+                // 結果をキャッシュに保存
+                setCachedResult(cacheKey, exerciseList)
                 _exercises.value = exerciseList
                 
             } catch (e: Exception) {
@@ -238,6 +267,59 @@ class ExerciseManagerViewModel @Inject constructor(
                 _isLoading.value = false
             }
         }
+    }
+    
+    /**
+     * キャッシュキーを生成
+     */
+    private fun generateCacheKey(
+        query: String,
+        filter: ExerciseFilter,
+        sortOrder: ExerciseSortOrder
+    ): String {
+        return "${query}_${filter.hashCode()}_${sortOrder.name}"
+    }
+    
+    /**
+     * キャッシュから結果を取得（タイムアウトチェック付き）
+     */
+    private fun getCachedResult(cacheKey: String): List<ExerciseTemplate>? {
+        val timestamp = cacheTimestamps[cacheKey] ?: return null
+        val currentTime = System.currentTimeMillis()
+        
+        return if (currentTime - timestamp < cacheTimeout) {
+            searchCache[cacheKey]
+        } else {
+            // タイムアウトしたキャッシュを削除
+            searchCache.remove(cacheKey)
+            cacheTimestamps.remove(cacheKey)
+            null
+        }
+    }
+    
+    /**
+     * 結果をキャッシュに保存
+     */
+    private fun setCachedResult(cacheKey: String, result: List<ExerciseTemplate>) {
+        searchCache[cacheKey] = result
+        cacheTimestamps[cacheKey] = System.currentTimeMillis()
+        
+        // キャッシュサイズ制限（最大50エントリ）
+        if (searchCache.size > 50) {
+            val oldestKey = cacheTimestamps.minByOrNull { it.value }?.key
+            oldestKey?.let {
+                searchCache.remove(it)
+                cacheTimestamps.remove(it)
+            }
+        }
+    }
+    
+    /**
+     * キャッシュをクリア
+     */
+    fun clearCache() {
+        searchCache.clear()
+        cacheTimestamps.clear()
     }
 }
 
