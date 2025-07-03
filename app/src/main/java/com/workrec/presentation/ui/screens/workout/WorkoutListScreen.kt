@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ import com.workrec.presentation.viewmodel.WorkoutViewModel
 fun WorkoutListScreen(
     onNavigateToAddWorkout: () -> Unit,
     onNavigateToWorkoutDetail: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     viewModel: WorkoutViewModel
 ) {
     val workouts by viewModel.workouts.collectAsStateWithLifecycle()
@@ -50,7 +52,15 @@ fun WorkoutListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.workout_list)) }
+                title = { Text(stringResource(R.string.workout_list)) },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "設定"
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {

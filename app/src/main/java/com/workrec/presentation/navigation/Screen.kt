@@ -34,6 +34,9 @@ sealed interface Screen {
     
     @Serializable
     object ExerciseManager : Screen
+    
+    @Serializable
+    object Settings : Screen
 }
 
 /**
@@ -49,4 +52,5 @@ object Routes {
     const val GOAL_DETAIL = "goal_detail/{goalId}"
     const val ADD_GOAL = "add_goal"
     const val EXERCISE_MANAGER = "exercise_manager"
+    const val SETTINGS = "settings"
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.*
@@ -34,6 +35,7 @@ import com.workrec.presentation.ui.screens.goal.GoalScreen
 import com.workrec.presentation.ui.screens.goal.AddGoalScreen
 import com.workrec.presentation.ui.screens.goal.GoalDetailScreen
 import com.workrec.presentation.ui.screens.exercise.ExerciseManagerScreen
+import com.workrec.presentation.ui.screens.settings.SettingsScreen
 import com.workrec.presentation.viewmodel.AddWorkoutViewModel
 import com.workrec.presentation.viewmodel.AddGoalViewModel
 import com.workrec.presentation.viewmodel.GoalDetailViewModel
@@ -69,6 +71,9 @@ fun WorkRecNavigation() {
                     },
                     onNavigateToWorkoutDetail = { workoutId ->
                         navController.navigate("workout_detail/$workoutId")
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate(Routes.SETTINGS)
                     },
                     viewModel = workoutViewModel
                 )
@@ -174,6 +179,15 @@ fun WorkRecNavigation() {
                     }
                 )
             }
+            
+            // 設定画面
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    onNavigateToExerciseManager = {
+                        navController.navigate(Routes.EXERCISE_MANAGER)
+                    }
+                )
+            }
         }
     }
 }
@@ -236,5 +250,10 @@ private val bottomNavItems = listOf(
         route = Routes.GOAL_LIST,
         icon = Icons.Default.TrackChanges,
         label = "目標"
+    ),
+    BottomNavItem(
+        route = Routes.SETTINGS,
+        icon = Icons.Default.Settings,
+        label = "設定"
     )
 )
