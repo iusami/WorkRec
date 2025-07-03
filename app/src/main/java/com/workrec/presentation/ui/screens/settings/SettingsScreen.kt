@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,13 +48,6 @@ fun SettingsScreen(
                 subtitle = "バージョン情報・ライセンス",
                 icon = Icons.Default.Info,
                 isEnabled = true
-            ),
-            SettingItemData(
-                item = SettingItem.DATA_MANAGEMENT,
-                title = "データ管理",
-                subtitle = "エクスポート・インポート（準備中）",
-                icon = Icons.Default.Storage,
-                isEnabled = false
             ),
             SettingItemData(
                 item = SettingItem.NOTIFICATION_SETTINGS,
