@@ -420,9 +420,6 @@ data class ExerciseManagerUiState(
 private fun getActiveFiltersCount(filter: ExerciseFilter): Int {
     var count = 0
     if (filter.category != null) count++
-    if (filter.equipment != null) count++
-    if (filter.difficulty != null) count++
-    if (!filter.muscle.isNullOrBlank()) count++
     if (!filter.showUserCreated) count++
     return count
 }

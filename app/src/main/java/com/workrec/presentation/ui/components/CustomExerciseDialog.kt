@@ -32,14 +32,10 @@ fun CustomExerciseDialog(
     // 作成状態管理
     var name by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(ExerciseCategory.OTHER) }
-    var selectedEquipment by remember { mutableStateOf(ExerciseEquipment.OTHER) }
-    var selectedDifficulty by remember { mutableStateOf(ExerciseDifficulty.BEGINNER) }
-    var muscle by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     
     // バリデーション状態
     var nameError by remember { mutableStateOf("") }
-    var muscleError by remember { mutableStateOf("") }
     var descriptionError by remember { mutableStateOf("") }
     var isFormValid by remember { mutableStateOf(false) }
     
@@ -53,14 +49,6 @@ fun CustomExerciseDialog(
         }
     }
     
-    fun validateMuscle(value: String): String {
-        return when {
-            value.isBlank() -> "対象筋肉は必須です"
-            value.length < 2 -> "対象筋肉は2文字以上で入力してください"
-            value.length > 30 -> "対象筋肉は30文字以下で入力してください"
-            else -> ""
-        }
-    }
     
     fun validateDescription(value: String): String {
         return when {
@@ -74,17 +62,13 @@ fun CustomExerciseDialog(
         nameError = validateExerciseName(name)
     }
     
-    LaunchedEffect(muscle) {
-        muscleError = validateMuscle(muscle)
-    }
     
     LaunchedEffect(description) {
         descriptionError = validateDescription(description)
     }
     
-    LaunchedEffect(nameError, muscleError, descriptionError, name, muscle) {
-        isFormValid = nameError.isEmpty() && muscleError.isEmpty() && descriptionError.isEmpty() &&
-                name.isNotBlank() && muscle.isNotBlank()
+    LaunchedEffect(nameError, descriptionError, name) {
+        isFormValid = nameError.isEmpty() && descriptionError.isEmpty() && name.isNotBlank()
     }
     
     
@@ -94,9 +78,6 @@ fun CustomExerciseDialog(
             val newExercise = ExerciseTemplate(
                 name = name.trim(),
                 category = selectedCategory,
-                equipment = selectedEquipment,
-                difficulty = selectedDifficulty,
-                muscle = muscle.trim(),
                 description = description.trim().ifBlank { null },
                 isUserCreated = true
             )
@@ -187,26 +168,6 @@ fun CustomExerciseDialog(
                         onCategorySelected = { selectedCategory = it }
                     )
                     
-                    // 対象筋肉入力
-                    CustomExerciseMuscleField(
-                        value = muscle,
-                        onValueChange = { muscle = it },
-                        error = muscleError,
-                        isRequired = true
-                    )
-                    
-                    // 器具選択
-                    CustomExerciseEquipmentDropdown(
-                        selectedEquipment = selectedEquipment,
-                        onEquipmentSelected = { selectedEquipment = it }
-                    )
-                    
-                    // 難易度選択
-                    CustomExerciseDifficultyDropdown(
-                        selectedDifficulty = selectedDifficulty,
-                        onDifficultySelected = { selectedDifficulty = it }
-                    )
-                    
                     // 説明入力（任意）
                     CustomExerciseDescriptionField(
                         value = description,
@@ -218,9 +179,6 @@ fun CustomExerciseDialog(
                     CustomExercisePreviewCard(
                         name = name,
                         category = selectedCategory,
-                        muscle = muscle,
-                        equipment = selectedEquipment,
-                        difficulty = selectedDifficulty,
                         description = description
                     )
                 }
@@ -421,9 +379,6 @@ private fun CustomExerciseDescriptionField(
 private fun CustomExercisePreviewCard(
     name: String,
     category: ExerciseCategory,
-    muscle: String,
-    equipment: ExerciseEquipment,
-    difficulty: ExerciseDifficulty,
     description: String,
     modifier: Modifier = Modifier
 ) {
@@ -461,29 +416,10 @@ private fun CustomExercisePreviewCard(
                     fontWeight = FontWeight.Bold
                 )
                 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CustomPreviewInfoChip(
-                        icon = Icons.Default.Category,
-                        text = category.displayName
-                    )
-                    CustomPreviewInfoChip(
-                        icon = Icons.Default.FitnessCenter,
-                        text = equipment.displayName
-                    )
-                    CustomPreviewInfoChip(
-                        icon = Icons.Default.Star,
-                        text = difficulty.displayName
-                    )
-                }
-                
-                if (muscle.isNotBlank()) {
-                    Text(
-                        text = "対象筋肉: $muscle",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                CustomPreviewInfoChip(
+                    icon = Icons.Default.Category,
+                    text = category.displayName
+                )
                 
                 if (description.isNotBlank()) {
                     Text(
@@ -614,191 +550,3 @@ private fun CustomExerciseCategoryDropdown(
     }
 }
 
-/**
- * カスタム器具選択ドロップダウン
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CustomExerciseEquipmentDropdown(
-    selectedEquipment: ExerciseEquipment,
-    onEquipmentSelected: (ExerciseEquipment) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    
-    Column(modifier = modifier) {
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = selectedEquipment.displayName,
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("器具") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.FitnessCenter,
-                        contentDescription = null
-                    )
-                },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-                    .semantics {
-                        contentDescription = "器具選択ドロップダウン。現在の選択: ${selectedEquipment.displayName}"
-                    }
-            )
-            
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ExerciseEquipment.values().forEach { equipment ->
-                    DropdownMenuItem(
-                        text = { Text(equipment.displayName) },
-                        onClick = {
-                            onEquipmentSelected(equipment)
-                            expanded = false
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = when (equipment) {
-                                    ExerciseEquipment.BARBELL -> Icons.Default.FitnessCenter
-                                    ExerciseEquipment.DUMBBELL -> Icons.Default.SportsHandball
-                                    ExerciseEquipment.MACHINE -> Icons.Default.Settings
-                                    ExerciseEquipment.BODYWEIGHT -> Icons.Default.SelfImprovement
-                                    ExerciseEquipment.CABLE -> Icons.Default.Cable
-                                    ExerciseEquipment.RESISTANCE_BAND -> Icons.Default.LinearScale
-                                    ExerciseEquipment.KETTLEBELL -> Icons.Default.FitnessCenter
-                                    ExerciseEquipment.MEDICINE_BALL -> Icons.Default.SportsBaseball
-                                    ExerciseEquipment.SUSPENSION -> Icons.Default.Link
-                                    ExerciseEquipment.OTHER -> Icons.Default.MoreHoriz
-                                },
-                                contentDescription = null,
-                                tint = if (equipment == selectedEquipment) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
-                            )
-                        },
-                        modifier = Modifier.semantics {
-                            contentDescription = "${equipment.displayName}を選択"
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * カスタム難易度選択ドロップダウン
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CustomExerciseDifficultyDropdown(
-    selectedDifficulty: ExerciseDifficulty,
-    onDifficultySelected: (ExerciseDifficulty) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    
-    Column(modifier = modifier) {
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = selectedDifficulty.displayName,
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("難易度") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null
-                    )
-                },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-                    .semantics {
-                        contentDescription = "難易度選択ドロップダウン。現在の選択: ${selectedDifficulty.displayName}"
-                    }
-            )
-            
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ExerciseDifficulty.values().forEach { difficulty ->
-                    DropdownMenuItem(
-                        text = { 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(difficulty.displayName)
-                                // 難易度を星で表現
-                                Row {
-                                    repeat(
-                                        when (difficulty) {
-                                            ExerciseDifficulty.BEGINNER -> 1
-                                            ExerciseDifficulty.INTERMEDIATE -> 2
-                                            ExerciseDifficulty.ADVANCED -> 3
-                                            ExerciseDifficulty.EXPERT -> 4
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Star,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(12.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        onClick = {
-                            onDifficultySelected(difficulty)
-                            expanded = false
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = when (difficulty) {
-                                    ExerciseDifficulty.BEGINNER -> Icons.Default.School
-                                    ExerciseDifficulty.INTERMEDIATE -> Icons.Default.TrendingUp
-                                    ExerciseDifficulty.ADVANCED -> Icons.Default.EmojiEvents
-                                    ExerciseDifficulty.EXPERT -> Icons.Default.Star
-                                },
-                                contentDescription = null,
-                                tint = if (difficulty == selectedDifficulty) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
-                            )
-                        },
-                        modifier = Modifier.semantics {
-                            contentDescription = "${difficulty.displayName}を選択"
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
