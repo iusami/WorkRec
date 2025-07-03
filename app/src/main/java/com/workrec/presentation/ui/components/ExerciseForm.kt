@@ -268,7 +268,8 @@ fun ExerciseForm(
                 showSuccessAnimation = true
                 showExercisePicker = false
             },
-            onDismiss = { showExercisePicker = false }
+            onDismiss = { showExercisePicker = false },
+            onNavigateToExerciseManager = onNavigateToExerciseManager
         )
     }
     

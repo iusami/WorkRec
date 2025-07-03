@@ -32,6 +32,7 @@ import kotlinx.coroutines.delay
 fun ExercisePickerDialog(
     onExerciseSelected: (ExerciseTemplate) -> Unit,
     onDismiss: () -> Unit,
+    onNavigateToExerciseManager: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ExerciseManagerViewModel = hiltViewModel()
 ) {
@@ -80,6 +81,19 @@ fun ExercisePickerDialog(
                     )
                     
                     Row {
+                        // エクササイズ管理ボタン
+                        IconButton(
+                            onClick = {
+                                onDismiss() // ダイアログを閉じてから管理画面に移動
+                                onNavigateToExerciseManager()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "エクササイズ管理"
+                            )
+                        }
+                        
                         // カスタムエクササイズ追加ボタン
                         IconButton(
                             onClick = { showCustomDialog = true }
