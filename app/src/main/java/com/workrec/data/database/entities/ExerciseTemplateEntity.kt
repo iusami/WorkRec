@@ -5,13 +5,9 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.workrec.data.database.converters.ExerciseCategoryConverters
-import com.workrec.data.database.converters.ExerciseEquipmentConverters
-import com.workrec.data.database.converters.ExerciseDifficultyConverters
 import com.workrec.data.database.converters.StringListConverters
 import com.workrec.domain.entities.ExerciseTemplate
 import com.workrec.domain.entities.ExerciseCategory
-import com.workrec.domain.entities.ExerciseEquipment
-import com.workrec.domain.entities.ExerciseDifficulty
 
 /**
  * Roomデータベース用のエクササイズテンプレートエンティティ
@@ -20,15 +16,11 @@ import com.workrec.domain.entities.ExerciseDifficulty
     tableName = "exercise_templates",
     indices = [
         Index(value = ["name"]),
-        Index(value = ["category"]),
-        Index(value = ["equipment"]),
-        Index(value = ["muscle"])
+        Index(value = ["category"])
     ]
 )
 @TypeConverters(
     ExerciseCategoryConverters::class,
-    ExerciseEquipmentConverters::class,
-    ExerciseDifficultyConverters::class,
     StringListConverters::class
 )
 data class ExerciseTemplateEntity(
@@ -36,9 +28,6 @@ data class ExerciseTemplateEntity(
     val id: Long = 0,
     val name: String,
     val category: ExerciseCategory,
-    val muscle: String,
-    val equipment: ExerciseEquipment,
-    val difficulty: ExerciseDifficulty,
     val description: String? = null,
     val instructions: List<String> = emptyList(),
     val tips: List<String> = emptyList(),
@@ -53,9 +42,6 @@ fun ExerciseTemplateEntity.toDomainModel(): ExerciseTemplate {
         id = id,
         name = name,
         category = category,
-        muscle = muscle,
-        equipment = equipment,
-        difficulty = difficulty,
         description = description,
         instructions = instructions,
         tips = tips,
@@ -71,9 +57,6 @@ fun ExerciseTemplate.toEntity(): ExerciseTemplateEntity {
         id = id,
         name = name,
         category = category,
-        muscle = muscle,
-        equipment = equipment,
-        difficulty = difficulty,
         description = description,
         instructions = instructions,
         tips = tips,

@@ -22,15 +22,13 @@ import com.workrec.data.database.entities.*
         GoalProgressEntity::class,
         ExerciseTemplateEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(
     DateConverters::class,
     DurationConverters::class,
     ExerciseCategoryConverters::class,
-    ExerciseEquipmentConverters::class,
-    ExerciseDifficultyConverters::class,
     StringListConverters::class,
     GoalTypeConverters::class
 )
