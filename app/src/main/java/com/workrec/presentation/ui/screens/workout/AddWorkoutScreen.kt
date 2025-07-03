@@ -32,6 +32,7 @@ import kotlinx.datetime.todayIn
 @Composable
 fun AddWorkoutScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToExerciseManager: () -> Unit = {},
     viewModel: AddWorkoutViewModel
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -168,7 +169,8 @@ fun AddWorkoutScreen(
                             },
                             onExerciseDelete = { 
                                 viewModel.removeExercise(index)
-                            }
+                            },
+                            onNavigateToExerciseManager = onNavigateToExerciseManager
                         )
                     }
                     

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ fun ExerciseForm(
     exercise: Exercise,
     onExerciseUpdate: (Exercise) -> Unit,
     onExerciseDelete: () -> Unit,
+    onNavigateToExerciseManager: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -58,16 +60,32 @@ fun ExerciseForm(
                 }
             }
 
-            // エクササイズ名入力
-            OutlinedTextField(
-                value = exercise.name,
-                onValueChange = { newName ->
-                    onExerciseUpdate(exercise.copy(name = newName))
-                },
-                label = { Text("エクササイズ名") },
-                placeholder = { Text("例: ベンチプレス") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            // エクササイズ名入力とテンプレート選択
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = exercise.name,
+                    onValueChange = { newName ->
+                        onExerciseUpdate(exercise.copy(name = newName))
+                    },
+                    label = { Text("エクササイズ名") },
+                    placeholder = { Text("例: ベンチプレス") },
+                    modifier = Modifier.weight(1f)
+                )
+                
+                IconButton(
+                    onClick = onNavigateToExerciseManager
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.List,
+                        contentDescription = "エクササイズテンプレートから選択",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             // カテゴリー選択
             ExposedDropdownMenuBox(

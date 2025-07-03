@@ -33,6 +33,7 @@ import com.workrec.presentation.ui.screens.progress.ProgressScreen
 import com.workrec.presentation.ui.screens.goal.GoalScreen
 import com.workrec.presentation.ui.screens.goal.AddGoalScreen
 import com.workrec.presentation.ui.screens.goal.GoalDetailScreen
+import com.workrec.presentation.ui.screens.exercise.ExerciseManagerScreen
 import com.workrec.presentation.viewmodel.AddWorkoutViewModel
 import com.workrec.presentation.viewmodel.AddGoalViewModel
 import com.workrec.presentation.viewmodel.GoalDetailViewModel
@@ -98,6 +99,9 @@ fun WorkRecNavigation() {
                     onNavigateBack = {
                         navController.popBackStack()
                     },
+                    onNavigateToExerciseManager = {
+                        navController.navigate(Routes.EXERCISE_MANAGER)
+                    },
                     viewModel = addWorkoutViewModel
                 )
             }
@@ -159,6 +163,15 @@ fun WorkRecNavigation() {
                         navController.popBackStack()
                     },
                     viewModel = addGoalViewModel
+                )
+            }
+            
+            // エクササイズ管理画面
+            composable(Routes.EXERCISE_MANAGER) {
+                ExerciseManagerScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
                 )
             }
         }
