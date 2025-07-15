@@ -54,6 +54,5 @@ data class SettingsUiState(
 enum class SettingItem {
     EXERCISE_MANAGER,      // エクササイズ管理
     APP_INFO,             // アプリについて
-    DATA_MANAGEMENT,      // データ管理（将来実装）
     NOTIFICATION_SETTINGS // 通知設定（将来実装）
 }

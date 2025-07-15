@@ -42,17 +42,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
         return exerciseTemplateDao.getExerciseTemplatesByCategory(category).map { it.toDomainModel() }
     }
 
-    override suspend fun getExerciseTemplatesByEquipment(equipment: ExerciseEquipment): List<ExerciseTemplate> {
-        return exerciseTemplateDao.getExerciseTemplatesByEquipment(equipment).map { it.toDomainModel() }
-    }
-
-    override suspend fun getExerciseTemplatesByDifficulty(difficulty: ExerciseDifficulty): List<ExerciseTemplate> {
-        return exerciseTemplateDao.getExerciseTemplatesByDifficulty(difficulty).map { it.toDomainModel() }
-    }
-
-    override suspend fun getExerciseTemplatesByMuscle(muscle: String): List<ExerciseTemplate> {
-        return exerciseTemplateDao.getExerciseTemplatesByMuscle(muscle).map { it.toDomainModel() }
-    }
 
     override suspend fun searchExerciseTemplates(
         filter: ExerciseFilter,
@@ -61,9 +50,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
         return exerciseTemplateDao.searchExerciseTemplates(
             name = filter.searchQuery.takeIf { it.isNotBlank() },
             category = filter.category,
-            equipment = filter.equipment,
-            difficulty = filter.difficulty,
-            muscle = filter.muscle?.takeIf { it.isNotBlank() },
             showUserCreated = filter.showUserCreated,
             sortOrder = sortOrder.name
         ).map { it.toDomainModel() }
@@ -81,13 +67,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
         return exerciseTemplateDao.getUniqueCategories()
     }
 
-    override suspend fun getUniqueEquipment(): List<ExerciseEquipment> {
-        return exerciseTemplateDao.getUniqueEquipment()
-    }
-
-    override suspend fun getUniqueMuscles(): List<String> {
-        return exerciseTemplateDao.getUniqueMuscles()
-    }
 
     override suspend fun saveExerciseTemplate(exerciseTemplate: ExerciseTemplate): Long {
         return exerciseTemplateDao.insertExerciseTemplate(exerciseTemplate.toEntity())
@@ -135,9 +114,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "ベンチプレス",
                 category = ExerciseCategory.CHEST,
-                muscle = "大胸筋",
-                equipment = ExerciseEquipment.BARBELL,
-                difficulty = ExerciseDifficulty.INTERMEDIATE,
                 description = "胸部の基本的な筋力トレーニング種目",
                 instructions = listOf(
                     "ベンチに仰向けに寝る",
@@ -150,9 +126,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "プッシュアップ",
                 category = ExerciseCategory.CHEST,
-                muscle = "大胸筋",
-                equipment = ExerciseEquipment.BODYWEIGHT,
-                difficulty = ExerciseDifficulty.BEGINNER,
                 description = "自重による胸部トレーニング",
                 instructions = listOf(
                     "腕立て伏せの姿勢を作る",
@@ -164,9 +137,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "ダンベルフライ",
                 category = ExerciseCategory.CHEST,
-                muscle = "大胸筋",
-                equipment = ExerciseEquipment.DUMBBELL,
-                difficulty = ExerciseDifficulty.INTERMEDIATE,
                 description = "胸部の分離トレーニング",
                 instructions = listOf(
                     "ベンチに仰向けに寝る",
@@ -181,9 +151,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "デッドリフト",
                 category = ExerciseCategory.BACK,
-                muscle = "広背筋",
-                equipment = ExerciseEquipment.BARBELL,
-                difficulty = ExerciseDifficulty.ADVANCED,
                 description = "背中と下半身の複合種目",
                 instructions = listOf(
                     "バーベルの前に立つ",
@@ -196,9 +163,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "ラットプルダウン",
                 category = ExerciseCategory.BACK,
-                muscle = "広背筋",
-                equipment = ExerciseEquipment.MACHINE,
-                difficulty = ExerciseDifficulty.BEGINNER,
                 description = "マシンを使った背中のトレーニング",
                 instructions = listOf(
                     "マシンに座る",
@@ -211,9 +175,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "チンアップ",
                 category = ExerciseCategory.BACK,
-                muscle = "広背筋",
-                equipment = ExerciseEquipment.BODYWEIGHT,
-                difficulty = ExerciseDifficulty.ADVANCED,
                 description = "自重による背中のトレーニング",
                 instructions = listOf(
                     "鉄棒にぶら下がる",
@@ -227,9 +188,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "ショルダープレス",
                 category = ExerciseCategory.SHOULDERS,
-                muscle = "三角筋",
-                equipment = ExerciseEquipment.DUMBBELL,
-                difficulty = ExerciseDifficulty.INTERMEDIATE,
                 description = "肩の基本的な押す動作",
                 instructions = listOf(
                     "ダンベルを肩の高さで構える",
@@ -241,9 +199,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "サイドレイズ",
                 category = ExerciseCategory.SHOULDERS,
-                muscle = "三角筋",
-                equipment = ExerciseEquipment.DUMBBELL,
-                difficulty = ExerciseDifficulty.BEGINNER,
                 description = "肩の側面を鍛えるトレーニング",
                 instructions = listOf(
                     "ダンベルを体の横で持つ",
@@ -257,9 +212,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "バーベルカール",
                 category = ExerciseCategory.ARMS,
-                muscle = "上腕二頭筋",
-                equipment = ExerciseEquipment.BARBELL,
-                difficulty = ExerciseDifficulty.BEGINNER,
                 description = "上腕二頭筋の基本種目",
                 instructions = listOf(
                     "バーベルを持って立つ",
@@ -271,9 +223,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "トライセプスエクステンション",
                 category = ExerciseCategory.ARMS,
-                muscle = "上腕三頭筋",
-                equipment = ExerciseEquipment.DUMBBELL,
-                difficulty = ExerciseDifficulty.INTERMEDIATE,
                 description = "上腕三頭筋のトレーニング",
                 instructions = listOf(
                     "ベンチに仰向けになる",
@@ -288,9 +237,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "スクワット",
                 category = ExerciseCategory.LEGS,
-                muscle = "大腿四頭筋",
-                equipment = ExerciseEquipment.BARBELL,
-                difficulty = ExerciseDifficulty.INTERMEDIATE,
                 description = "下半身の王様的種目",
                 instructions = listOf(
                     "バーベルを肩に担ぐ",
@@ -303,9 +249,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "レッグプレス",
                 category = ExerciseCategory.LEGS,
-                muscle = "大腿四頭筋",
-                equipment = ExerciseEquipment.MACHINE,
-                difficulty = ExerciseDifficulty.BEGINNER,
                 description = "マシンを使った脚のトレーニング",
                 instructions = listOf(
                     "マシンに座る",
@@ -318,9 +261,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "ルーマニアンデッドリフト",
                 category = ExerciseCategory.LEGS,
-                muscle = "ハムストリング",
-                equipment = ExerciseEquipment.BARBELL,
-                difficulty = ExerciseDifficulty.INTERMEDIATE,
                 description = "ハムストリングに効果的な種目",
                 instructions = listOf(
                     "バーベルを持って立つ",
@@ -335,9 +275,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "プランク",
                 category = ExerciseCategory.CORE,
-                muscle = "腹直筋",
-                equipment = ExerciseEquipment.BODYWEIGHT,
-                difficulty = ExerciseDifficulty.BEGINNER,
                 description = "体幹の安定性を鍛える",
                 instructions = listOf(
                     "うつ伏せになる",
@@ -350,9 +287,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "クランチ",
                 category = ExerciseCategory.CORE,
-                muscle = "腹直筋",
-                equipment = ExerciseEquipment.BODYWEIGHT,
-                difficulty = ExerciseDifficulty.BEGINNER,
                 description = "腹筋の基本種目",
                 instructions = listOf(
                     "仰向けに寝る",
@@ -367,9 +301,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "ランニング",
                 category = ExerciseCategory.CARDIO,
-                muscle = "全身",
-                equipment = ExerciseEquipment.BODYWEIGHT,
-                difficulty = ExerciseDifficulty.BEGINNER,
                 description = "基本的な有酸素運動",
                 instructions = listOf(
                     "適切なペースを見つける",
@@ -381,9 +312,6 @@ class ExerciseTemplateRepositoryImpl @Inject constructor(
             ExerciseTemplate(
                 name = "バーピー",
                 category = ExerciseCategory.CARDIO,
-                muscle = "全身",
-                equipment = ExerciseEquipment.BODYWEIGHT,
-                difficulty = ExerciseDifficulty.INTERMEDIATE,
                 description = "全身を使った高強度運動",
                 instructions = listOf(
                     "立った状態から始める",

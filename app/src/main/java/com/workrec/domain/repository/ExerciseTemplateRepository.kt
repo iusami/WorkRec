@@ -2,8 +2,6 @@ package com.workrec.domain.repository
 
 import com.workrec.domain.entities.ExerciseTemplate
 import com.workrec.domain.entities.ExerciseCategory
-import com.workrec.domain.entities.ExerciseEquipment
-import com.workrec.domain.entities.ExerciseDifficulty
 import com.workrec.domain.entities.ExerciseFilter
 import com.workrec.domain.entities.ExerciseSortOrder
 import kotlinx.coroutines.flow.Flow
@@ -39,20 +37,6 @@ interface ExerciseTemplateRepository {
      */
     suspend fun getExerciseTemplatesByCategory(category: ExerciseCategory): List<ExerciseTemplate>
     
-    /**
-     * 器具別のエクササイズテンプレートを取得
-     */
-    suspend fun getExerciseTemplatesByEquipment(equipment: ExerciseEquipment): List<ExerciseTemplate>
-    
-    /**
-     * 難易度別のエクササイズテンプレートを取得
-     */
-    suspend fun getExerciseTemplatesByDifficulty(difficulty: ExerciseDifficulty): List<ExerciseTemplate>
-    
-    /**
-     * 主要筋肉別のエクササイズテンプレートを取得
-     */
-    suspend fun getExerciseTemplatesByMuscle(muscle: String): List<ExerciseTemplate>
     
     /**
      * フィルターとソート条件でエクササイズテンプレートを検索
@@ -77,15 +61,6 @@ interface ExerciseTemplateRepository {
      */
     suspend fun getUniqueCategories(): List<ExerciseCategory>
     
-    /**
-     * ユニークな器具一覧を取得
-     */
-    suspend fun getUniqueEquipment(): List<ExerciseEquipment>
-    
-    /**
-     * ユニークな主要筋肉一覧を取得
-     */
-    suspend fun getUniqueMuscles(): List<String>
     
     /**
      * エクササイズテンプレートを保存

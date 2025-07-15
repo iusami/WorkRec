@@ -9,10 +9,16 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DisplayMode
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 // import androidx.hilt.navigation.compose.hiltViewModel  // 一時的に無効化
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +30,10 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import kotlinx.datetime.Instant
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
+import java.util.Calendar
 
 /**
  * ワークアウト追加画面
@@ -97,7 +107,10 @@ fun AddWorkoutScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             ) {
                 Row(
                     modifier = Modifier
@@ -106,21 +119,40 @@ fun AddWorkoutScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "実施日",
-                            style = MaterialTheme.typography.labelMedium
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = uiState.selectedDate.toString(),
-                            style = MaterialTheme.typography.bodyLarge
+                            text = formatDateForDisplay(uiState.selectedDate),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
+                        
+                        // 今日かどうかの表示
+                        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                        if (uiState.selectedDate == today) {
+                            Text(
+                                text = "今日",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                     
-                    IconButton(onClick = { showDatePicker = true }) {
+                    IconButton(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.semantics {
+                            contentDescription = "実施日を変更: 現在${formatDateForDisplay(uiState.selectedDate)}"
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.Default.DateRange,
-                            contentDescription = "日付を選択"
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -243,7 +275,7 @@ private fun EmptyExerciseState(
 }
 
 /**
- * 日付選択ダイアログ
+ * 日付選択ダイアログ（Material3 DatePicker）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -252,23 +284,102 @@ private fun DatePickerDialog(
     onDateSelected: (LocalDate) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // TODO: Material3 DatePickerの実装
-    // 現在は簡易的なダイアログで代用
-    AlertDialog(
+    // DatePickerStateを初期化（選択された日付から開始）
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = selectedDate.toEpochMillis(),
+        initialDisplayMode = DisplayMode.Picker,
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                // 今日以前の日付のみ選択可能（未来日制限）
+                return utcTimeMillis <= getTodayInMillis()
+            }
+        }
+    )
+    
+    DatePickerDialog(
         onDismissRequest = onDismiss,
-        title = { Text("日付を選択") },
-        text = { 
-            Text("現在選択: $selectedDate\n\n※日付選択機能は今後実装予定です") 
-        },
         confirmButton = {
-            TextButton(onClick = { onDateSelected(selectedDate) }) {
-                Text("OK")
+            TextButton(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        onDateSelected(millis.toLocalDate())
+                    }
+                },
+                enabled = datePickerState.selectedDateMillis != null
+            ) {
+                Text("選択")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
+                Text("キャンセル")
             }
         }
-    )
+    ) {
+        DatePicker(
+            state = datePickerState,
+            modifier = Modifier.padding(16.dp),
+            title = {
+                Text(
+                    text = "実施日を選択",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(16.dp)
+                )
+            },
+            headline = {
+                datePickerState.selectedDateMillis?.let { millis ->
+                    val date = millis.toLocalDate()
+                    Text(
+                        text = formatDateForDisplay(date),
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+        )
+    }
+}
+
+/**
+ * 日付変換ユーティリティ関数
+ */
+
+/**
+ * LocalDateをUTC millisecondsに変換
+ * Material3 DatePickerで使用
+ */
+private fun LocalDate.toEpochMillis(): Long {
+    return this.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+}
+
+/**
+ * UTC millisecondsをLocalDateに変換
+ * Material3 DatePickerから取得したデータを変換
+ */
+private fun Long.toLocalDate(): LocalDate {
+    return Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.UTC).date
+}
+
+/**
+ * 今日の日付をUTC millisecondsで取得
+ */
+private fun getTodayInMillis(): Long {
+    return Clock.System.todayIn(TimeZone.currentSystemDefault()).toEpochMillis()
+}
+
+/**
+ * 日付を表示用フォーマットに変換
+ */
+private fun formatDateForDisplay(date: LocalDate): String {
+    val dayOfWeek = when (date.dayOfWeek.value) {
+        1 -> "月"
+        2 -> "火"
+        3 -> "水" 
+        4 -> "木"
+        5 -> "金"
+        6 -> "土"
+        7 -> "日"
+        else -> ""
+    }
+    return "${date.year}年${date.monthNumber}月${date.dayOfMonth}日（${dayOfWeek}）"
 }

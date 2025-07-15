@@ -316,35 +316,6 @@ private fun FilterChipsRow(
             )
         }
         
-        filter.equipment?.let { equipment ->
-            FilterChip(
-                selected = true,
-                onClick = onClearFilter,
-                label = { Text(equipment.displayName) },
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "削除",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            )
-        }
-        
-        filter.difficulty?.let { difficulty ->
-            FilterChip(
-                selected = true,
-                onClick = onClearFilter,
-                label = { Text(difficulty.displayName) },
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "削除",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            )
-        }
     }
 }
 
@@ -379,7 +350,7 @@ private fun ExerciseTemplateCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${exerciseTemplate.category.displayName} • ${exerciseTemplate.muscle}",
+                        text = exerciseTemplate.category.displayName,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -407,19 +378,6 @@ private fun ExerciseTemplateCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 詳細情報
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                InfoChip(
-                    icon = Icons.Default.FitnessCenter,
-                    text = exerciseTemplate.equipment.displayName
-                )
-                InfoChip(
-                    icon = Icons.Default.Star,
-                    text = exerciseTemplate.difficulty.displayName
-                )
-            }
 
             // 説明
             exerciseTemplate.description?.let { description ->
@@ -511,8 +469,6 @@ private fun ExerciseFilterDialog(
     onDismiss: () -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf(currentFilter.category) }
-    var selectedEquipment by remember { mutableStateOf(currentFilter.equipment) }
-    var selectedDifficulty by remember { mutableStateOf(currentFilter.difficulty) }
     var selectedSortOrder by remember { mutableStateOf(sortOrder) }
 
     AlertDialog(
@@ -533,9 +489,7 @@ private fun ExerciseFilterDialog(
             TextButton(
                 onClick = {
                     val newFilter = currentFilter.copy(
-                        category = selectedCategory,
-                        equipment = selectedEquipment,
-                        difficulty = selectedDifficulty
+                        category = selectedCategory
                     )
                     onFilterApply(newFilter, selectedSortOrder)
                 }

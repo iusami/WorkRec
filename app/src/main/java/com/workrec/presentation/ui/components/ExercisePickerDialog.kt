@@ -262,20 +262,6 @@ private fun FilterChipsSection(
             )
         }
         
-        filter.equipment?.let { equipment ->
-            FilterChip(
-                selected = true,
-                onClick = onClearFilter,
-                label = { Text(equipment.displayName) },
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "削除",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            )
-        }
     }
 }
 
@@ -343,10 +329,7 @@ private fun ExercisePickerCard(
             .fillMaxWidth()
             .semantics {
                 contentDescription = "エクササイズ: ${exerciseTemplate.name}, " +
-                        "カテゴリー: ${exerciseTemplate.category.displayName}, " +
-                        "対象筋肉: ${exerciseTemplate.muscle}, " +
-                        "器具: ${exerciseTemplate.equipment.displayName}, " +
-                        "難易度: ${exerciseTemplate.difficulty.displayName}"
+                        "カテゴリー: ${exerciseTemplate.category.displayName}"
                 role = Role.Button
             },
         onClick = onSelect
@@ -361,28 +344,15 @@ private fun ExercisePickerCard(
                 fontWeight = FontWeight.Bold
             )
             
-            // カテゴリーと筋肉
+            // カテゴリー
             Text(
-                text = "${exerciseTemplate.category.displayName} • ${exerciseTemplate.muscle}",
+                text = exerciseTemplate.category.displayName,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // 詳細情報
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                InfoChip(
-                    icon = Icons.Default.FitnessCenter,
-                    text = exerciseTemplate.equipment.displayName
-                )
-                InfoChip(
-                    icon = Icons.Default.Star,
-                    text = exerciseTemplate.difficulty.displayName
-                )
-            }
             
             // 説明（あれば）
             exerciseTemplate.description?.let { description ->
