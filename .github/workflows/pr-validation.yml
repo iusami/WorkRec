@@ -51,14 +51,14 @@ jobs:
       run: ./gradlew assembleDebug --stacktrace
       
     - name: Upload lint results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: lint-results
         path: app/build/reports/lint-results-debug.html
         
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: pr-test-results

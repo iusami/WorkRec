@@ -63,13 +63,10 @@ jobs:
         echo "Generated version: $VERSION"
         
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ steps.version.outputs.version }}
-        release_name: WorkRec v${{ steps.version.outputs.version }}
+        name: WorkRec v${{ steps.version.outputs.version }}
         body: |
           ## WorkRec Manual Release v${{ steps.version.outputs.version }}
           
@@ -84,15 +81,6 @@ jobs:
           Download the APK file below and install on your Android device.
           
           **Note:** You may need to enable "Install from unknown sources" in your device settings.
+        files: ./app/build/outputs/apk/release/app-release.apk
         draft: false
         prerelease: ${{ contains(github.event.inputs.version_suffix, 'beta') || contains(github.event.inputs.version_suffix, 'alpha') }}
-        
-    - name: Upload Release APK
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./app/build/outputs/apk/release/app-release.apk
-        asset_name: WorkRec-v${{ steps.version.outputs.version }}.apk
-        asset_content_type: application/vnd.android.package-archive
