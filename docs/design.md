@@ -306,3 +306,109 @@ data class Goal(
 - **Android Keystore**: 暗号化キーの安全な管理
 - **Room暗号化**: SQLCipherを使用した（オプション）
 - **GDPR準拠**: プライバシー設定の提供
+
+## テスト戦略とアーキテクチャ
+
+### テスト設計原則
+
+本プロジェクトでは、**関心事の分離**に基づいたテスト戦略を採用し、機能の複雑さに応じて適切なテストレベルを選択しています。
+
+#### 階層化テストアプローチ
+
+```
+┌─────────────────────────────────────────┐
+│        Integration Tests                │
+│  • UI Workflow Tests                    │
+│  • Component Integration Tests          │
+│  • End-to-End User Scenarios           │
+└─────────────────────────────────────────┘
+                     │
+┌─────────────────────────────────────────┐
+│        Feature-Specific Tests           │
+│  • Calendar Feature Tests               │
+│  • Exercise Management Tests            │
+│  • Goal Tracking Tests                  │
+└─────────────────────────────────────────┘
+                     │
+┌─────────────────────────────────────────┐
+│           Unit Tests                    │
+│  • Domain Use Cases                     │
+│  • Core ViewModel Logic                 │
+│  • Utility Functions                    │
+└─────────────────────────────────────────┘
+```
+
+### カレンダー機能のテスト設計
+
+カレンダー機能は複雑な状態管理と UI インタラクションを含むため、**専用テストクラス**による分離テスト戦略を採用：
+
+#### 1. 機能別テストクラス分離
+
+- **`WorkoutCalendarFeatureTest.kt`**
+  - カレンダー固有のビジネスロジック
+  - 月間ナビゲーション、日付選択、データ読み込み
+  - ViewModelとUse Caseの統合テスト
+
+- **`WorkoutCalendarWorkflowTest.kt`**
+  - 複雑なユーザーワークフローのテスト
+  - 複数月ナビゲーション、日付選択の連続操作
+  - 状態遷移の検証
+
+- **`WorkoutCalendarIntegrationTest.kt`**
+  - UI コンポーネントの統合テスト
+  - Compose コンポーネント間の相互作用
+  - アクセシビリティとレスポンシブデザイン
+
+#### 2. テスト分離の利点
+
+- **保守性**: 各テストクラスが単一の責任を持つ
+- **実行速度**: 必要なテストのみを選択実行可能
+- **可読性**: テストの目的が明確
+- **拡張性**: 新機能追加時の影響範囲を限定
+
+#### 3. ViewModelテストの最適化
+
+`WorkoutViewModel` の単体テストは**コア機能**に集中：
+- 基本的なワークアウト CRUD 操作
+- エラーハンドリング
+- 状態管理の基本動作
+
+複雑なカレンダー機能は専用テストクラスで包括的にテスト。
+
+### テストカバレッジ戦略
+
+#### 機能別テストマトリックス
+
+| 機能領域 | Unit Tests | Feature Tests | Integration Tests |
+|---------|------------|---------------|-------------------|
+| **ワークアウト CRUD** | ✅ ViewModel | ✅ Use Cases | ✅ UI Components |
+| **カレンダー表示** | ✅ Utilities | ✅ Feature Tests | ✅ UI Workflows |
+| **進捗追跡** | ✅ Calculations | ✅ Chart Logic | ✅ Screen Tests |
+| **目標管理** | ✅ Business Logic | ✅ Progress Tracking | ✅ User Flows |
+
+#### アクセシビリティテスト
+
+- **`CalendarAccessibilityTest.kt`**: カレンダーコンポーネントのアクセシビリティ準拠
+- **レスポンシブデザインテスト**: 画面サイズ対応の検証
+- **キーボードナビゲーション**: 支援技術対応
+
+### 継続的品質保証
+
+#### 自動化テスト実行
+
+```bash
+# 機能別テスト実行
+./gradlew test --tests "*Calendar*"
+./gradlew test --tests "*Exercise*"
+./gradlew test --tests "*Goal*"
+
+# 包括的テスト実行
+./gradlew test
+./gradlew connectedAndroidTest
+```
+
+#### テスト品質メトリクス
+
+- **テストカバレッジ**: 各層で適切なカバレッジを維持
+- **テスト実行時間**: 機能分離により高速実行を実現
+- **テスト安定性**: モックとテストダブルによる安定したテスト環境

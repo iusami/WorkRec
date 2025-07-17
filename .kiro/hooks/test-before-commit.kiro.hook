@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Test Before Commit",
+  "description": "Automatically runs unit tests and Android tests before code is committed to ensure all tests pass",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/src/main/java/**/*.kt",
+      "app/src/test/java/**/*.kt",
+      "app/src/androidTest/java/**/*.kt",
+      "app/build.gradle.kts",
+      "build.gradle.kts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Code changes detected in the Android project. Please run the test suite to ensure all tests pass before committing. Execute './gradlew test' for unit tests and './gradlew connectedAndroidTest' for instrumented tests. Verify that no tests are failing and that code coverage remains adequate. If any tests fail, please review the changes and fix any issues before proceeding with the commit."
+  }
+}
