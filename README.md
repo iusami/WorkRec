@@ -169,28 +169,58 @@ Android Studio will automatically prompt to sync the project. If not:
 
 ## Testing
 
-The project maintains comprehensive test coverage with **57 tests** achieving **100% success rate**.
+The project maintains comprehensive test coverage with a robust testing strategy that separates concerns across different test types.
 
-### Test Structure
+### Test Architecture
 
-- **Unit Tests** (`src/test/`): Business logic and ViewModels
-- **Instrumented Tests** (`src/androidTest/`): UI components and integration tests
+The testing strategy follows a layered approach that mirrors the application architecture:
+
+#### Unit Tests (`src/test/`)
+- **Domain Layer Tests**: Use cases and business logic validation
+- **ViewModel Tests**: State management and UI logic (core functionality)
+- **Feature-Specific Tests**: Dedicated test classes for complex features
+- **Utility Tests**: Calendar utilities, responsive design helpers
+
+#### Integration Tests (`src/androidTest/`)
+- **UI Component Tests**: Individual Compose component behavior
+- **Workflow Tests**: Complex user interaction scenarios
+- **Screen Integration Tests**: Full screen functionality and navigation
+
+### Calendar Feature Testing Strategy
+
+The calendar functionality uses a **specialized testing approach** with dedicated test classes:
+
+- **`WorkoutCalendarFeatureTest.kt`**: Calendar-specific business logic and ViewModel integration
+- **`WorkoutCalendarWorkflowTest.kt`**: Complex calendar user workflows and interactions
+- **`WorkoutCalendarIntegrationTest.kt`**: Calendar UI component integration testing
+- **`CalendarAccessibilityTest.kt`**: Accessibility compliance and responsive design
+
+This separation ensures:
+- **Focused Testing**: Each test class has a single responsibility
+- **Maintainability**: Calendar tests are isolated from core workout functionality
+- **Performance**: Faster test execution through targeted test suites
 
 ### Testing Frameworks
 
 - **JUnit 4**: Core testing framework
-- **Mockk**: Mocking library for Kotlin
+- **Mockk**: Mocking library for Kotlin with coroutines support
 - **Truth**: Fluent assertion library by Google
-- **Compose Testing**: UI testing for Jetpack Compose
-- **Coroutines Test**: Testing utilities for coroutines
+- **Compose Testing**: UI testing for Jetpack Compose components
+- **Coroutines Test**: Testing utilities for async operations
 
 ### Running Tests
 
 ```bash
-# Quick test run
+# Run all unit tests
 ./gradlew test
 
-# Detailed test report (generates HTML report)
+# Run specific feature tests
+./gradlew test --tests "*Calendar*"
+
+# Run instrumented tests (requires device/emulator)
+./gradlew connectedAndroidTest
+
+# Generate detailed test report
 ./gradlew test --continue
 
 # View test results
@@ -244,9 +274,14 @@ Key dependencies are managed through version catalogs in `build.gradle.kts`:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## Documentation
 
-For detailed development guidance and architecture decisions, refer to [CLAUDE.md](CLAUDE.md).
+### Architecture & Design
+- **[Design Document](docs/design.md)**: Comprehensive system architecture and design decisions
+- **[Calendar Implementation Guide](docs/calendar-implementation.md)**: Detailed calendar feature architecture and testing strategy
+
+### Development Guidelines
+- **[CLAUDE.md](CLAUDE.md)**: Development guidance and coding standards
 
 ## テスト状況
 
