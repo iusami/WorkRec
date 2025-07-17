@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "name": "Documentation Sync",
+  "description": "Monitors all Kotlin source files, Gradle build files, and configuration files for changes and automatically updates project documentation in README.md and docs/ folder to keep documentation in sync with code changes",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.kt",
+      "**/*.kts",
+      "*.gradle.kts",
+      "gradle.properties",
+      "settings.gradle.kts",
+      "app/src/main/AndroidManifest.xml",
+      "app/proguard-rules.pro"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Source code files have been modified in this Android Kotlin project. Please review the changes and update the documentation accordingly. Focus on:\n\n1. Update README.md if there are significant architectural changes, new features, or setup instructions that need modification\n2. Update docs/design.md or create new documentation files in the docs/ folder if there are:\n   - New architectural patterns or components\n   - Changes to the data model or database schema\n   - New UI components or screens\n   - Changes to the build configuration or dependencies\n   - New use cases or business logic\n\nEnsure the documentation accurately reflects the current state of the codebase, including any new features, architectural decisions, or important implementation details that would help developers understand and contribute to the project."
+  }
+}
