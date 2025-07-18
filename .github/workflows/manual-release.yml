@@ -1,0 +1,89 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_suffix:
+        description: 'Version suffix (optional, e.g., -hotfix, -beta)'
+        required: false
+        default: ''
+      release_notes:
+        description: 'Release notes'
+        required: true
+        default: 'Manual release'
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
+  GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
+
+jobs:
+  manual-release:
+    name: Manual Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      with:
+        gradle-home-cache-cleanup: true
+        
+    - name: Cache Gradle dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
+      
+    - name: Run tests
+      run: ./gradlew testDebugUnitTest --stacktrace
+      
+    - name: Build release APK
+      run: ./gradlew assembleRelease --stacktrace
+      
+    - name: Generate version number and build date
+      id: version
+      run: |
+        VERSION=$(date +'%Y%m%d')${{ github.event.inputs.version_suffix }}
+        BUILD_DATE=$(date +'%Y-%m-%d %H:%M:%S UTC')
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
+        echo "Generated version: $VERSION"
+        echo "Build date: $BUILD_DATE"
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        name: WorkRec v${{ steps.version.outputs.version }}
+        body: |
+          ## WorkRec Manual Release v${{ steps.version.outputs.version }}
+          
+          **Branch:** ${{ github.ref_name }}
+          **Commit:** ${{ github.sha }}
+          **Build Date:** ${{ steps.version.outputs.build_date }}
+          
+          ### Release Notes
+          ${{ github.event.inputs.release_notes }}
+          
+          ### Installation
+          Download the APK file below and install on your Android device.
+          
+          **Note:** You may need to enable "Install from unknown sources" in your device settings.
+        files: ./app/build/outputs/apk/release/app-release.apk
+        draft: false
+        prerelease: ${{ contains(github.event.inputs.version_suffix, 'beta') || contains(github.event.inputs.version_suffix, 'alpha') }}

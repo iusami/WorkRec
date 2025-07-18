@@ -253,6 +253,47 @@ Key dependencies are managed through version catalogs in `build.gradle.kts`:
 - **Room**: Type-safe database access
 - **Navigation**: Type-safe navigation for Compose
 
+## CI/CD Pipeline
+
+This project uses an automated CI/CD pipeline powered by GitHub Actions for continuous integration and deployment.
+
+### Continuous Integration
+
+**Executed on every commit:**
+- Unit test execution
+- Lint analysis
+- Build verification
+
+**Executed on pull requests:**
+- Code quality checks
+- Test result reporting
+- Build success validation
+
+### Automated Releases
+
+**Automatic execution on release branches (`release/*`):**
+- Complete test suite execution
+- Release APK build
+- Automatic GitHub Release creation
+- Version format: `YYYYMMDD` (e.g., `20240117`)
+
+### Build Artifacts
+
+Each build generates the following artifacts:
+- **Debug APK**: For development and testing
+- **Release APK**: For production distribution
+- **Test Reports**: Coverage and detailed results
+- **Lint Results**: Code quality analysis
+
+### Manual Releases
+
+Manual release creation available through GitHub UI:
+- Custom release notes
+- Version suffix support (`-hotfix`, `-beta`)
+- Prerelease configuration
+
+For detailed information, see [`.github/workflows/README.md`](.github/workflows/README.md).
+
 ## Contributing
 
 1. Fork the repository
@@ -269,6 +310,7 @@ Key dependencies are managed through version catalogs in `build.gradle.kts`:
 2. Follow the established architecture patterns
 3. Add tests for new functionality
 4. Update documentation as needed
+5. CI/CD pipeline will automatically validate your changes
 
 ## License
 
