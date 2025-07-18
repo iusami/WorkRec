@@ -16,13 +16,12 @@ env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
   GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
-permissions:
-  contents: write
-
 jobs:
   manual-release:
     name: Manual Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout code
