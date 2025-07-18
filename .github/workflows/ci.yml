@@ -10,6 +10,9 @@ env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
   GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
+permissions:
+  contents: write
+
 jobs:
   test:
     name: Unit Tests
@@ -76,7 +79,7 @@ jobs:
         gradle-home-cache-cleanup: true
         
     - name: Cache Gradle dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.gradle/caches
