@@ -37,7 +37,7 @@ jobs:
         gradle-home-cache-cleanup: true
         
     - name: Cache Gradle dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.gradle/caches
@@ -55,12 +55,15 @@ jobs:
     - name: Build release APK
       run: ./gradlew assembleRelease --stacktrace
       
-    - name: Generate version number
+    - name: Generate version number and build date
       id: version
       run: |
         VERSION=$(date +'%Y%m%d')${{ github.event.inputs.version_suffix }}
+        BUILD_DATE=$(date +'%Y-%m-%d %H:%M:%S UTC')
         echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
         echo "Generated version: $VERSION"
+        echo "Build date: $BUILD_DATE"
         
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -72,7 +75,7 @@ jobs:
           
           **Branch:** ${{ github.ref_name }}
           **Commit:** ${{ github.sha }}
-          **Build Date:** $(date +'%Y-%m-%d %H:%M:%S UTC')
+          **Build Date:** ${{ steps.version.outputs.build_date }}
           
           ### Release Notes
           ${{ github.event.inputs.release_notes }}
