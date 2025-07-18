@@ -8,6 +8,8 @@ WorkRec is a comprehensive fitness tracking application designed for Android sma
 
 ### Key Features
 
+**Test documentation change for CI optimization**
+
 - **Workout Recording**: Log exercises, sets, weights, and repetitions
 - **Progress Tracking**: Visualize fitness progress with charts and analytics  
 - **Goal Management**: Set and track fitness goals with progress monitoring
