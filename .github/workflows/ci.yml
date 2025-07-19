@@ -11,9 +11,110 @@ env:
   GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
 jobs:
+  change-detection:
+    name: Detect Changes and Build Strategy
+    runs-on: ubuntu-latest
+    outputs:
+      build-strategy: ${{ steps.detect.outputs.build-strategy }}
+      skip-build: ${{ steps.detect.outputs.skip-build }}
+      full-build: ${{ steps.detect.outputs.full-build }}
+      incremental-build: ${{ steps.detect.outputs.incremental-build }}
+      test-only-build: ${{ steps.detect.outputs.test-only-build }}
+      gradle-tasks: ${{ steps.detect.outputs.gradle-tasks }}
+      gradle-opts: ${{ steps.detect.outputs.gradle-opts }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for change detection
+        
+    - name: Detect changes and determine build strategy
+      id: detect
+      run: |
+        chmod +x .github/scripts/detect-changes.sh
+        .github/scripts/detect-changes.sh
+        
+        # Export outputs for other jobs
+        echo "build-strategy=${BUILD_STRATEGY}" >> $GITHUB_OUTPUT
+        echo "skip-build=${SKIP_BUILD:-false}" >> $GITHUB_OUTPUT
+        echo "full-build=${FULL_BUILD:-false}" >> $GITHUB_OUTPUT
+        echo "incremental-build=${INCREMENTAL_BUILD:-false}" >> $GITHUB_OUTPUT
+        echo "test-only-build=${TEST_ONLY_BUILD:-false}" >> $GITHUB_OUTPUT
+        echo "gradle-tasks=${GRADLE_TASKS}" >> $GITHUB_OUTPUT
+        echo "gradle-opts=${GRADLE_OPTS}" >> $GITHUB_OUTPUT
+
+  # Build strategy matrix - determines which jobs to run based on change detection
+  strategy-matrix:
+    name: Build Strategy Matrix
+    runs-on: ubuntu-latest
+    needs: change-detection
+    if: needs.change-detection.outputs.skip-build != 'true'
+    outputs:
+      test-needed: ${{ steps.matrix.outputs.test-needed }}
+      debug-needed: ${{ steps.matrix.outputs.debug-needed }}
+      release-needed: ${{ steps.matrix.outputs.release-needed }}
+      lint-needed: ${{ steps.matrix.outputs.lint-needed }}
+    steps:
+    - name: Determine build matrix
+      id: matrix
+      run: |
+        # Determine which jobs are needed based on build strategy
+        TEST_NEEDED="false"
+        DEBUG_NEEDED="false"
+        RELEASE_NEEDED="false"
+        LINT_NEEDED="false"
+        
+        BUILD_STRATEGY="${{ needs.change-detection.outputs.build-strategy }}"
+        
+        case "$BUILD_STRATEGY" in
+          "full")
+            TEST_NEEDED="true"
+            DEBUG_NEEDED="true"
+            RELEASE_NEEDED="true"
+            LINT_NEEDED="true"
+            echo "Full build strategy: all jobs enabled"
+            ;;
+          "incremental")
+            TEST_NEEDED="true"
+            DEBUG_NEEDED="true"
+            LINT_NEEDED="true"
+            echo "Incremental build strategy: test, debug, and lint enabled"
+            ;;
+          "test-only")
+            TEST_NEEDED="true"
+            LINT_NEEDED="true"
+            echo "Test-only build strategy: test and lint enabled"
+            ;;
+          "config-only")
+            DEBUG_NEEDED="true"
+            LINT_NEEDED="true"
+            echo "Config-only build strategy: debug and lint enabled"
+            ;;
+          *)
+            TEST_NEEDED="true"
+            DEBUG_NEEDED="true"
+            LINT_NEEDED="true"
+            echo "Default build strategy: test, debug, and lint enabled"
+            ;;
+        esac
+        
+        echo "test-needed=$TEST_NEEDED" >> $GITHUB_OUTPUT
+        echo "debug-needed=$DEBUG_NEEDED" >> $GITHUB_OUTPUT
+        echo "release-needed=$RELEASE_NEEDED" >> $GITHUB_OUTPUT
+        echo "lint-needed=$LINT_NEEDED" >> $GITHUB_OUTPUT
+        
+        echo "Build matrix determined:"
+        echo "  Tests: $TEST_NEEDED"
+        echo "  Debug: $DEBUG_NEEDED"
+        echo "  Release: $RELEASE_NEEDED"
+        echo "  Lint: $LINT_NEEDED"
+
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
+    needs: [change-detection, strategy-matrix]
+    if: needs.strategy-matrix.outputs.test-needed == 'true'
     
     steps:
     - name: Checkout code
@@ -30,21 +131,81 @@ jobs:
       with:
         gradle-home-cache-cleanup: true
         
+    # Multi-layer caching strategy for optimal build performance
+    # Layer 1: Gradle Dependencies Cache - Most stable, changes infrequently
     - name: Cache Gradle dependencies
       uses: actions/cache@v4
       with:
         path: |
-          ~/.gradle/caches
+          ~/.gradle/caches/modules-2
+          ~/.gradle/caches/jars-9
+          ~/.gradle/caches/transforms-3
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
         restore-keys: |
-          ${{ runner.os }}-gradle-
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties') }}
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
+          ${{ runner.os }}-gradle-deps-
+        save-always: true
           
-    - name: Make gradlew executable
-      run: chmod +x ./gradlew
+    # Layer 2: Gradle Build Cache - Intermediate compilation results
+    - name: Cache Gradle build cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches/build-cache-1
+          .gradle/build-cache
+        key: ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
+          ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
+          ${{ runner.os }}-gradle-build-
+        save-always: true
+          
+    # Layer 3: Test Cache - Test compilation and execution cache
+    - name: Cache test outputs
+      uses: actions/cache@v4
+      with:
+        path: |
+          app/build/intermediates/unit_test_code_coverage
+          app/build/intermediates/unit_test_config_directory
+          app/build/tmp/compileDebugUnitTestKotlin
+          app/build/tmp/compileReleaseUnitTestKotlin
+        key: ${{ runner.os }}-test-cache-${{ hashFiles('app/src/test/**/*.kt', 'app/src/androidTest/**/*.kt') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-test-cache-${{ hashFiles('app/src/test/**/*.kt', 'app/src/androidTest/**/*.kt') }}
+          ${{ runner.os }}-test-cache-
+          
+    - name: Make scripts executable
+      run: |
+        chmod +x ./gradlew
+        chmod +x scripts/cache-management.sh
+        chmod +x scripts/error-handling.sh
+        chmod +x scripts/build-retry-wrapper.sh
+        chmod +x scripts/notification-system.sh
+        
+    # Initialize error handling and notification systems
+    - name: Initialize error handling system
+      run: |
+        scripts/error-handling.sh validate
+        scripts/notification-system.sh init
+      continue-on-error: true
+        
+    # Cache management and optimization with error handling
+    - name: Optimize cache structure with error handling
+      run: scripts/cache-management.sh optimize
+      continue-on-error: true
       
-    - name: Run unit tests
-      run: ./gradlew testDebugUnitTest --stacktrace
+    - name: Run unit tests with comprehensive error handling
+      run: scripts/build-retry-wrapper.sh test
+      
+    # Error reporting on failure
+    - name: Report test failures
+      if: failure()
+      run: |
+        scripts/notification-system.sh build-failure "unit-tests" "Unit tests failed in CI pipeline"
+      continue-on-error: true
       
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -55,10 +216,13 @@ jobs:
           app/build/reports/tests/
           app/build/test-results/
           
-  build:
-    name: Build APK
+  lint:
+    name: Lint Analysis
     runs-on: ubuntu-latest
-    needs: test
+    needs: [change-detection, strategy-matrix]
+    if: needs.strategy-matrix.outputs.lint-needed == 'true'
+    env:
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
     
     steps:
     - name: Checkout code
@@ -75,31 +239,343 @@ jobs:
       with:
         gradle-home-cache-cleanup: true
         
+    # Lightweight caching for lint analysis
     - name: Cache Gradle dependencies
       uses: actions/cache@v4
       with:
         path: |
-          ~/.gradle/caches
+          ~/.gradle/caches/modules-2
+          ~/.gradle/caches/jars-9
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
         restore-keys: |
-          ${{ runner.os }}-gradle-
+          ${{ runner.os }}-gradle-deps-
+        save-always: true
+        
+    - name: Make scripts executable
+      run: |
+        chmod +x ./gradlew
+        chmod +x scripts/error-handling.sh
+        chmod +x scripts/build-retry-wrapper.sh
+        chmod +x scripts/notification-system.sh
+      
+    - name: Run lint analysis with error handling
+      run: scripts/build-retry-wrapper.sh lint
+      
+    # Error reporting on failure
+    - name: Report lint failures
+      if: failure()
+      run: |
+        scripts/notification-system.sh build-failure "lint-analysis" "Lint analysis failed in CI pipeline"
+      continue-on-error: true
+      
+    - name: Upload lint results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: lint-results
+        path: app/build/reports/lint-results-debug.html
+
+  build-debug:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+    needs: [change-detection, strategy-matrix, test]
+    if: needs.strategy-matrix.outputs.debug-needed == 'true'
+    env:
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      with:
+        gradle-home-cache-cleanup: true
+        
+    # Multi-layer caching strategy for optimal build performance
+    # Layer 1: Gradle Dependencies Cache - Most stable, changes infrequently
+    - name: Cache Gradle dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches/modules-2
+          ~/.gradle/caches/jars-9
+          ~/.gradle/caches/transforms-3
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties') }}
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
+          ${{ runner.os }}-gradle-deps-
+        save-always: true
           
-    - name: Make gradlew executable
-      run: chmod +x ./gradlew
+    # Layer 2: Gradle Build Cache - Intermediate compilation results
+    - name: Cache Gradle build cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches/build-cache-1
+          .gradle/build-cache
+        key: ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
+          ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
+          ${{ runner.os }}-gradle-build-
+        save-always: true
+          
+    # Layer 3: Build Intermediates Cache - Compilation outputs
+    - name: Cache build intermediates
+      uses: actions/cache@v4
+      with:
+        path: |
+          app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar
+          app/build/intermediates/compile_library_classes_jar
+          app/build/intermediates/compile_r_class_jar
+          app/build/intermediates/incremental
+          app/build/intermediates/javac
+          app/build/intermediates/runtime_library_classes_jar
+          app/build/tmp/compileDebugKotlin
+          app/build/tmp/compileReleaseKotlin
+          build/kotlin
+        key: ${{ runner.os }}-build-intermediates-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-build-intermediates-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}
+          ${{ runner.os }}-build-intermediates-${{ github.base_ref || github.ref_name }}
+          ${{ runner.os }}-build-intermediates-
+          
+    # Layer 4: KSP Generated Files Cache - Annotation processing outputs
+    - name: Cache KSP generated files
+      uses: actions/cache@v4
+      with:
+        path: |
+          app/build/generated/ksp
+          build/generated/ksp
+        key: ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*', 'app/src/**/*') }}
+        restore-keys: |
+          ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
+          ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java') }}
+          ${{ runner.os }}-ksp-
+          
+    # Layer 5: Android Resources Cache - Resource compilation outputs
+    - name: Cache Android resources
+      uses: actions/cache@v4
+      with:
+        path: |
+          app/build/intermediates/merged_res
+          app/build/intermediates/processed_res
+          app/build/intermediates/res
+          app/build/intermediates/symbol_list
+        key: ${{ runner.os }}-android-res-${{ hashFiles('app/src/main/res/**/*', 'app/src/main/AndroidManifest.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-android-res-
+          
+    - name: Make scripts executable
+      run: |
+        chmod +x ./gradlew
+        chmod +x scripts/cache-management.sh
+        chmod +x scripts/error-handling.sh
+        chmod +x scripts/build-retry-wrapper.sh
+        chmod +x scripts/notification-system.sh
+        
+    # Initialize error handling system
+    - name: Initialize error handling system
+      run: |
+        scripts/error-handling.sh validate
+        scripts/notification-system.sh init
+      continue-on-error: true
+        
+    # Cache management and optimization with error handling
+    - name: Optimize cache structure with error handling
+      run: scripts/cache-management.sh optimize
+      continue-on-error: true
       
-    - name: Build debug APK
-      run: ./gradlew assembleDebug --stacktrace
+    - name: Build debug APK with comprehensive error handling
+      run: scripts/build-retry-wrapper.sh debug
       
-    - name: Build release APK
-      run: ./gradlew assembleRelease --stacktrace
+    # Error reporting on failure
+    - name: Report debug build failures
+      if: failure()
+      run: |
+        scripts/notification-system.sh build-failure "debug-build" "Debug APK build failed in CI pipeline"
+      continue-on-error: true
+      
+    # Post-build cache management and statistics
+    - name: Generate cache statistics
+      run: scripts/cache-management.sh stats
+      if: always()
+      
+    - name: Upload cache statistics
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: build-cache-statistics
+        path: cache-stats.json
+        
+    - name: Clean up oversized caches
+      run: scripts/cache-management.sh clean
+      if: always()
       
     - name: Upload debug APK
       uses: actions/upload-artifact@v4
       with:
         name: debug-apk
         path: app/build/outputs/apk/debug/*.apk
+
+  build-release:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+    needs: [change-detection, strategy-matrix, test]
+    if: needs.strategy-matrix.outputs.release-needed == 'true'
+    env:
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
         
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      with:
+        gradle-home-cache-cleanup: true
+        
+    # Multi-layer caching strategy for optimal build performance
+    # Layer 1: Gradle Dependencies Cache - Most stable, changes infrequently
+    - name: Cache Gradle dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches/modules-2
+          ~/.gradle/caches/jars-9
+          ~/.gradle/caches/transforms-3
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties') }}
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
+          ${{ runner.os }}-gradle-deps-
+        save-always: true
+          
+    # Layer 2: Gradle Build Cache - Intermediate compilation results
+    - name: Cache Gradle build cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches/build-cache-1
+          .gradle/build-cache
+        key: ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
+          ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
+          ${{ runner.os }}-gradle-build-
+        save-always: true
+          
+    # Layer 3: Build Intermediates Cache - Compilation outputs
+    - name: Cache build intermediates
+      uses: actions/cache@v4
+      with:
+        path: |
+          app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar
+          app/build/intermediates/compile_library_classes_jar
+          app/build/intermediates/compile_r_class_jar
+          app/build/intermediates/incremental
+          app/build/intermediates/javac
+          app/build/intermediates/runtime_library_classes_jar
+          app/build/tmp/compileDebugKotlin
+          app/build/tmp/compileReleaseKotlin
+          build/kotlin
+        key: ${{ runner.os }}-build-intermediates-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-build-intermediates-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}
+          ${{ runner.os }}-build-intermediates-${{ github.base_ref || github.ref_name }}
+          ${{ runner.os }}-build-intermediates-
+          
+    # Layer 4: KSP Generated Files Cache - Annotation processing outputs
+    - name: Cache KSP generated files
+      uses: actions/cache@v4
+      with:
+        path: |
+          app/build/generated/ksp
+          build/generated/ksp
+        key: ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*', 'app/src/**/*') }}
+        restore-keys: |
+          ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
+          ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java') }}
+          ${{ runner.os }}-ksp-
+          
+    # Layer 5: Android Resources Cache - Resource compilation outputs
+    - name: Cache Android resources
+      uses: actions/cache@v4
+      with:
+        path: |
+          app/build/intermediates/merged_res
+          app/build/intermediates/processed_res
+          app/build/intermediates/res
+          app/build/intermediates/symbol_list
+        key: ${{ runner.os }}-android-res-${{ hashFiles('app/src/main/res/**/*', 'app/src/main/AndroidManifest.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-android-res-
+          
+    - name: Make scripts executable
+      run: |
+        chmod +x ./gradlew
+        chmod +x scripts/cache-management.sh
+        chmod +x scripts/error-handling.sh
+        chmod +x scripts/build-retry-wrapper.sh
+        chmod +x scripts/notification-system.sh
+        
+    # Initialize error handling system
+    - name: Initialize error handling system
+      run: |
+        scripts/error-handling.sh validate
+        scripts/notification-system.sh init
+      continue-on-error: true
+        
+    # Cache management and optimization with error handling
+    - name: Optimize cache structure with error handling
+      run: scripts/cache-management.sh optimize
+      continue-on-error: true
+      
+    - name: Build release APK with comprehensive error handling
+      run: scripts/build-retry-wrapper.sh release
+      
+    # Error reporting on failure
+    - name: Report release build failures
+      if: failure()
+      run: |
+        scripts/notification-system.sh build-failure "release-build" "Release APK build failed in CI pipeline"
+      continue-on-error: true
+      
+    # Post-build cache management and statistics
+    - name: Generate cache statistics
+      run: scripts/cache-management.sh stats
+      if: always()
+      
+    - name: Upload cache statistics
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: release-cache-statistics
+        path: cache-stats.json
+        
+    - name: Clean up oversized caches
+      run: scripts/cache-management.sh clean
+      if: always()
+      
     - name: Upload release APK
       uses: actions/upload-artifact@v4
       with:
@@ -109,7 +585,7 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [test, build]
+    needs: [test, build-release]
     if: startsWith(github.ref, 'refs/heads/release/')
     permissions:
       contents: write

@@ -145,8 +145,17 @@ Android Studio will automatically prompt to sync the project. If not:
 
 ### Testing
 
+The project includes enhanced test configuration optimized for CI/CD environments with parallel execution and memory optimization.
+
+#### Test Configuration Features
+
+- **Parallel Test Execution**: Automatically scales to available CPU cores for faster test runs
+- **Memory Optimization**: Configurable heap sizes (1-2GB) for optimal performance
+- **Test Orchestration**: Uses AndroidX Test Orchestrator for reliable instrumented tests
+- **Animation Disabled**: Faster and more reliable UI tests
+
 ```bash
-# Run all unit tests
+# Run all unit tests (with parallel execution)
 ./gradlew test
 
 # Run instrumented tests (requires connected device/emulator)
@@ -157,6 +166,9 @@ Android Studio will automatically prompt to sync the project. If not:
 
 # Run specific test class
 ./gradlew test --tests "com.workrec.domain.usecase.WorkoutUseCaseTest"
+
+# Run tests with custom parallel configuration
+./gradlew test -Dorg.gradle.workers.max=4
 ```
 
 ### Installation
@@ -323,6 +335,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Architecture & Design
 - **[Design Document](docs/design.md)**: Comprehensive system architecture and design decisions
 - **[Calendar Implementation Guide](docs/calendar-implementation.md)**: Detailed calendar feature architecture and testing strategy
+- **[Build Optimization Guide](docs/build-optimization.md)**: CI/CD optimization strategies and performance enhancements
 
 ### Development Guidelines
 - **[CLAUDE.md](CLAUDE.md)**: Development guidance and coding standards
