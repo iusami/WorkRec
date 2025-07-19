@@ -147,7 +147,6 @@ jobs:
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
           ${{ runner.os }}-gradle-deps-
-        save-always: true
           
     # Layer 2: Gradle Build Cache - Intermediate compilation results
     - name: Cache Gradle build cache
@@ -161,7 +160,6 @@ jobs:
           ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
           ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
           ${{ runner.os }}-gradle-build-
-        save-always: true
           
     # Layer 3: Test Cache - Test compilation and execution cache
     - name: Cache test outputs
@@ -222,7 +220,7 @@ jobs:
     needs: [change-detection, strategy-matrix]
     if: needs.strategy-matrix.outputs.lint-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -250,7 +248,6 @@ jobs:
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
         restore-keys: |
           ${{ runner.os }}-gradle-deps-
-        save-always: true
         
     - name: Make scripts executable
       run: |
@@ -282,7 +279,7 @@ jobs:
     needs: [change-detection, strategy-matrix, test]
     if: needs.strategy-matrix.outputs.debug-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -315,7 +312,6 @@ jobs:
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
           ${{ runner.os }}-gradle-deps-
-        save-always: true
           
     # Layer 2: Gradle Build Cache - Intermediate compilation results
     - name: Cache Gradle build cache
@@ -329,7 +325,6 @@ jobs:
           ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
           ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
           ${{ runner.os }}-gradle-build-
-        save-always: true
           
     # Layer 3: Build Intermediates Cache - Compilation outputs
     - name: Cache build intermediates
@@ -435,7 +430,7 @@ jobs:
     needs: [change-detection, strategy-matrix, test]
     if: needs.strategy-matrix.outputs.release-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -468,7 +463,6 @@ jobs:
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
           ${{ runner.os }}-gradle-deps-
-        save-always: true
           
     # Layer 2: Gradle Build Cache - Intermediate compilation results
     - name: Cache Gradle build cache
@@ -482,7 +476,6 @@ jobs:
           ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
           ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
           ${{ runner.os }}-gradle-build-
-        save-always: true
           
     # Layer 3: Build Intermediates Cache - Compilation outputs
     - name: Cache build intermediates
