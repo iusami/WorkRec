@@ -1,3 +1,5 @@
+import java.time.Duration
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -58,6 +60,117 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // Test Configuration - Enhanced Parallel Execution for CI Optimization
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
+            // Enable parallel test execution
+            all {
+                it.maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+                it.forkEvery = 100
+                it.maxHeapSize = "2g"
+                it.minHeapSize = "1g"
+            }
+        }
+        // Configure instrumented test execution
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
+        animationsDisabled = true
+    }
+}
+
+// Enhanced Task Configuration for Parallel Execution and CI Optimization
+tasks.withType<Test> {
+    // Configure optimal worker counts and memory allocation
+    val availableProcessors = Runtime.getRuntime().availableProcessors()
+    maxParallelForks = when {
+        availableProcessors >= 8 -> 4  // High-end CI runners
+        availableProcessors >= 4 -> 2  // Standard CI runners
+        else -> 1                      // Minimal CI runners
+    }
+    
+    // Fork configuration for test isolation and performance
+    forkEvery = 100
+    maxHeapSize = "2g"
+    minHeapSize = "512m"
+    
+    // JVM arguments for test processes
+    jvmArgs = listOf(
+        "-XX:+UseG1GC",
+        "-XX:+UseStringDeduplication",
+        "-XX:MaxGCPauseMillis=100",
+        "-Dfile.encoding=UTF-8"
+    )
+    
+    // Test logging configuration
+    testLogging {
+        events("passed", "skipped", "failed", "standardError")
+        showStandardStreams = false
+        showExceptions = true
+        showCauses = true
+        showStackTraces = false
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.SHORT
+    }
+    
+    // Parallel execution system properties
+    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.config.strategy", "dynamic")
+    systemProperty("junit.jupiter.execution.parallel.config.dynamic.factor", "2.0")
+    
+    // Performance optimization properties
+    systemProperty("kotlinx.coroutines.debug", "off")
+    systemProperty("kotlinx.coroutines.stacktrace.recovery", "false")
+    
+    // Timeout configuration
+    timeout.set(Duration.ofMinutes(10))
+}
+
+// Enhanced Kotlin Compilation Optimization with Build Performance Flags
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        jvmTarget = "11"
+        freeCompilerArgs += listOf(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-Xjvm-default=all",
+            "-Xuse-ir",
+            "-Xbackend-threads=4",
+            "-Xuse-fir-lt=false",
+            "-Xno-param-assertions",
+            "-Xno-call-assertions",
+            "-Xno-receiver-assertions"
+        )
+        // Enable incremental compilation
+        incremental = true
+        // Use build cache for compilation
+        usePreciseJavaTracking = true
+    }
+}
+
+// Android Compilation Task Optimization
+tasks.withType<com.android.build.gradle.tasks.factory.AndroidUnitTest> {
+    // Configure parallel execution for Android unit tests
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    forkEvery = 50
+}
+
+// Kapt Optimization for Annotation Processing
+kapt {
+    correctErrorTypes = true
+    useBuildCache = true
+    mapDiagnosticLocations = true
+    arguments {
+        arg("dagger.hilt.shareTestComponents", "true")
+        arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
+    }
+}
+
+// KSP Optimization for Symbol Processing
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.expandProjection", "true")
 }
 
 dependencies {

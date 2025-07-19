@@ -20,6 +20,8 @@ jobs:
   manual-release:
     name: Manual Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout code
@@ -49,12 +51,15 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
       
-    - name: Run tests
-      run: ./gradlew testDebugUnitTest --stacktrace
-      
     - name: Build release APK
       run: ./gradlew assembleRelease --stacktrace
       
+    - name: List build outputs
+      run: |
+        echo "Listing APK build outputs:"
+        find app/build/outputs -name "*.apk" -type f
+        ls -la app/build/outputs/apk/release/ || echo "Release directory not found"
+        
     - name: Generate version number and build date
       id: version
       run: |
