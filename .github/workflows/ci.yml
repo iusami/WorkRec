@@ -178,31 +178,31 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/cache-management.sh
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
-        
-    # Initialize error handling and notification systems
-    - name: Initialize error handling system
-      run: |
-        scripts/error-handling.sh validate
-        scripts/notification-system.sh init
-      continue-on-error: true
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
     # Cache management and optimization with error handling
     - name: Optimize cache structure with error handling
-      run: scripts/cache-management.sh optimize
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       continue-on-error: true
       
-    - name: Run unit tests with comprehensive error handling
-      run: scripts/build-retry-wrapper.sh test
+    - name: Run unit tests with error handling
+      run: |
+        # Run tests with basic error handling
+        if ! ./gradlew testDebugUnitTest --stacktrace; then
+          echo "Tests failed, attempting retry..."
+          sleep 5
+          ./gradlew clean testDebugUnitTest --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report test failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "unit-tests" "Unit tests failed in CI pipeline"
+        echo "Unit tests failed in CI pipeline"
+        echo "::error title=Tests Failed::Unit tests failed after retry attempts"
       continue-on-error: true
       
     - name: Upload test results
@@ -252,18 +252,23 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
       
     - name: Run lint analysis with error handling
-      run: scripts/build-retry-wrapper.sh lint
+      run: |
+        # Run lint with basic error handling
+        if ! ./gradlew lint --stacktrace; then
+          echo "Lint failed, attempting retry..."
+          sleep 5
+          ./gradlew clean lint --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report lint failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "lint-analysis" "Lint analysis failed in CI pipeline"
+        echo "Lint analysis failed in CI pipeline"
+        echo "::error title=Lint Failed::Lint analysis failed after retry attempts"
       continue-on-error: true
       
     - name: Upload lint results
@@ -375,47 +380,46 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/cache-management.sh
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
-        
-    # Initialize error handling system
-    - name: Initialize error handling system
-      run: |
-        scripts/error-handling.sh validate
-        scripts/notification-system.sh init
-      continue-on-error: true
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
     # Cache management and optimization with error handling
     - name: Optimize cache structure with error handling
-      run: scripts/cache-management.sh optimize
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       continue-on-error: true
       
-    - name: Build debug APK with comprehensive error handling
-      run: scripts/build-retry-wrapper.sh debug
+    - name: Build debug APK with error handling
+      run: |
+        # Run debug build with basic error handling
+        if ! ./gradlew assembleDebug --stacktrace; then
+          echo "Debug build failed, attempting retry..."
+          sleep 5
+          ./gradlew clean assembleDebug --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report debug build failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "debug-build" "Debug APK build failed in CI pipeline"
+        echo "Debug APK build failed in CI pipeline"
+        echo "::error title=Debug Build Failed::Debug APK build failed after retry attempts"
       continue-on-error: true
       
     # Post-build cache management and statistics
     - name: Generate cache statistics
-      run: scripts/cache-management.sh stats
+      run: |
+        # Generate basic cache statistics
+        echo "Cache size: $(du -sh ~/.gradle/caches 2>/dev/null | cut -f1 || echo 'Unknown')"
+        echo "Build output size: $(du -sh app/build 2>/dev/null | cut -f1 || echo 'Unknown')"
       if: always()
       
-    - name: Upload cache statistics
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: build-cache-statistics
-        path: cache-stats.json
-        
     - name: Clean up oversized caches
-      run: scripts/cache-management.sh clean
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       if: always()
       
     - name: Upload debug APK
@@ -526,47 +530,46 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/cache-management.sh
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
-        
-    # Initialize error handling system
-    - name: Initialize error handling system
-      run: |
-        scripts/error-handling.sh validate
-        scripts/notification-system.sh init
-      continue-on-error: true
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
     # Cache management and optimization with error handling
     - name: Optimize cache structure with error handling
-      run: scripts/cache-management.sh optimize
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       continue-on-error: true
       
-    - name: Build release APK with comprehensive error handling
-      run: scripts/build-retry-wrapper.sh release
+    - name: Build release APK with error handling
+      run: |
+        # Run release build with basic error handling
+        if ! ./gradlew assembleRelease --stacktrace; then
+          echo "Release build failed, attempting retry..."
+          sleep 5
+          ./gradlew clean assembleRelease --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report release build failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "release-build" "Release APK build failed in CI pipeline"
+        echo "Release APK build failed in CI pipeline"
+        echo "::error title=Release Build Failed::Release APK build failed after retry attempts"
       continue-on-error: true
       
     # Post-build cache management and statistics
     - name: Generate cache statistics
-      run: scripts/cache-management.sh stats
+      run: |
+        # Generate basic cache statistics
+        echo "Cache size: $(du -sh ~/.gradle/caches 2>/dev/null | cut -f1 || echo 'Unknown')"
+        echo "Build output size: $(du -sh app/build 2>/dev/null | cut -f1 || echo 'Unknown')"
       if: always()
       
-    - name: Upload cache statistics
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: release-cache-statistics
-        path: cache-stats.json
-        
     - name: Clean up oversized caches
-      run: scripts/cache-management.sh clean
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       if: always()
       
     - name: Upload release APK
