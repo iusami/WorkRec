@@ -392,23 +392,66 @@ data class Goal(
 - **レスポンシブデザインテスト**: 画面サイズ対応の検証
 - **キーボードナビゲーション**: 支援技術対応
 
+### CI/CD最適化テスト設定
+
+#### 並列テスト実行の最適化
+
+プロジェクトでは、CI/CD環境での高速テスト実行を実現するため、以下の最適化を実装：
+
+##### 単体テスト最適化
+```kotlin
+// build.gradle.kts での設定
+testOptions {
+    unitTests {
+        // 並列実行設定
+        all {
+            maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+            forkEvery = 100  // 100テスト毎にプロセスを再起動
+            maxHeapSize = "2g"  // 最大ヒープサイズ
+            minHeapSize = "1g"  // 最小ヒープサイズ
+        }
+    }
+}
+```
+
+##### インストゥルメンテッドテスト最適化
+```kotlin
+testOptions {
+    // AndroidX Test Orchestrator使用
+    execution = "ANDROIDX_TEST_ORCHESTRATOR"
+    // アニメーション無効化（高速化・安定化）
+    animationsDisabled = true
+}
+```
+
+#### パフォーマンス最適化の効果
+
+- **並列実行**: CPU コア数に基づく自動スケーリング
+- **メモリ管理**: 適切なヒープサイズ設定によるOOM回避
+- **プロセス管理**: 定期的なプロセス再起動によるメモリリーク防止
+- **UI テスト安定化**: アニメーション無効化による確実なテスト実行
+
 ### 継続的品質保証
 
 #### 自動化テスト実行
 
 ```bash
-# 機能別テスト実行
+# 機能別テスト実行（並列実行対応）
 ./gradlew test --tests "*Calendar*"
 ./gradlew test --tests "*Exercise*"
 ./gradlew test --tests "*Goal*"
 
-# 包括的テスト実行
+# 包括的テスト実行（最適化設定適用）
 ./gradlew test
 ./gradlew connectedAndroidTest
+
+# カスタム並列設定でのテスト実行
+./gradlew test -Dorg.gradle.workers.max=4
 ```
 
 #### テスト品質メトリクス
 
 - **テストカバレッジ**: 各層で適切なカバレッジを維持
-- **テスト実行時間**: 機能分離により高速実行を実現
-- **テスト安定性**: モックとテストダブルによる安定したテスト環境
+- **テスト実行時間**: 並列実行により大幅な高速化を実現
+- **テスト安定性**: Test Orchestrator とアニメーション無効化による安定実行
+- **リソース効率**: メモリ最適化による CI/CD 環境での安定動作

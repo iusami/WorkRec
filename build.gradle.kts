@@ -18,3 +18,44 @@ plugins {
     id("org.jetbrains.kotlin.plugin.parcelize") version "1.9.22" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22" apply false
 }
+
+// Global build performance optimizations for all subprojects
+allprojects {
+    // Configure Gradle task execution optimization
+    tasks.withType<JavaCompile> {
+        options.isFork = true
+        options.forkOptions.jvmArgs = listOf(
+            "-Xmx2g",
+            "-XX:+UseG1GC",
+            "-XX:+UseStringDeduplication"
+        )
+    }
+    
+    // Configure Kotlin compilation for all modules
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        kotlinOptions {
+            // Enable parallel compilation
+            freeCompilerArgs += listOf(
+                "-Xbackend-threads=0", // Use all available cores
+                "-Xuse-ir"
+            )
+        }
+    }
+}
+
+// Configure build cache and parallel execution at project level
+gradle.projectsEvaluated {
+    tasks.withType<Test> {
+        // Ensure all test tasks use parallel execution
+        maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+        
+        // Configure test JVM for optimal performance
+        jvmArgs = listOf(
+            "-XX:+UseG1GC",
+            "-XX:+UseStringDeduplication",
+            "-XX:MaxGCPauseMillis=100",
+            "-Xmx2g"
+        )
+    }
+}
+
