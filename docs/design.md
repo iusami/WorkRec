@@ -268,7 +268,11 @@ fun WorkoutCalendar(
 - **継続目標**: 連続実施日数の目標
 
 #### Progress Tracking
+
+目標追跡機能では、Room Relationを活用した効率的なデータ取得を実現しています。
+
 ```kotlin
+// ドメインエンティティ
 data class Goal(
     val id: Long = 0,
     val type: GoalType,
@@ -280,7 +284,41 @@ data class Goal(
     val progressPercentage: Float
         get() = (currentValue / targetValue).coerceAtMost(1.0).toFloat()
 }
+
+// 進捗記録エンティティ
+data class GoalProgressRecord(
+    val id: Long = 0,
+    val goalId: Long,
+    val recordDate: LocalDate,
+    val progressValue: Double,
+    val notes: String? = null,
+    val createdAt: LocalDate
+)
 ```
+
+#### Room Relationによる効率的なデータ取得
+
+`GoalWithProgress`エンティティは、目標とその進捗記録を一度のクエリで取得するためのRoom Relationです：
+
+```kotlin
+// データベース関係エンティティ
+@Entity
+data class GoalWithProgress(
+    @Embedded val goal: GoalEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "goalId"
+    )
+    val progressRecords: List<GoalProgressEntity>
+)
+```
+
+この設計により以下の利点を実現：
+
+- **パフォーマンス向上**: 単一クエリでの関連データ取得
+- **データ整合性**: 外部キー制約による参照整合性保証
+- **開発効率**: 複雑なJOINクエリの自動生成
+- **型安全性**: コンパイル時の型チェック
 
 ### 5. オフライン対応
 
@@ -288,7 +326,9 @@ data class Goal(
 - **WorkoutEntity**: ワークアウトデータの永続化
 - **ExerciseEntity**: エクササイズ情報
 - **GoalEntity**: 目標データ
-- **Relations**: エンティティ間の関係定義
+- **GoalProgressEntity**: 目標進捗記録データ
+- **GoalWithProgress**: 目標と進捗記録の関連データ（Room Relation）
+- **Relations**: エンティティ間の関係定義とデータ結合
 
 #### データ同期戦略
 - **オフライン優先**: すべてのデータはまずローカルに保存

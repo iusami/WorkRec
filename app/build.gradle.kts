@@ -155,23 +155,29 @@ tasks.withType<com.android.build.gradle.tasks.factory.AndroidUnitTest> {
     forkEvery = 50
 }
 
-// Kapt Optimization for Annotation Processing
+// Kapt Optimization for Annotation Processing (Hilt only)
 kapt {
     correctErrorTypes = true
     useBuildCache = true
     mapDiagnosticLocations = true
+    showProcessorStats = true
     arguments {
         arg("dagger.hilt.shareTestComponents", "true")
         arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
+        arg("dagger.fastInit", "enabled")
+        arg("dagger.formatGeneratedSource", "disabled")
     }
 }
 
-// KSP Optimization for Symbol Processing
+// KSP Optimization for Symbol Processing (Room only)
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
     arg("room.expandProjection", "true")
+    arg("room.generateKotlin", "true")
 }
+
+// KSP and KAPT configuration - no explicit task dependencies needed
 
 dependencies {
     val compose_version = "1.5.8"

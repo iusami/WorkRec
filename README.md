@@ -334,6 +334,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Architecture & Design
 - **[Design Document](docs/design.md)**: Comprehensive system architecture and design decisions
+- **[Database Schema Guide](docs/database-schema.md)**: Complete database design, entity relationships, and Room implementation details
 - **[Calendar Implementation Guide](docs/calendar-implementation.md)**: Detailed calendar feature architecture and testing strategy
 - **[Build Optimization Guide](docs/build-optimization.md)**: CI/CD optimization strategies and performance enhancements
 
