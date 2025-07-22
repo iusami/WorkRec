@@ -265,6 +265,36 @@ jobs:
       run: |
         chmod +x ./gradlew
         find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
+        
+    # Cache management and optimization with error handling
+    - name: Optimize cache structure with error handling
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
+        # Clear KSP generated files to ensure fresh generation in CI
+        rm -rf app/build/generated/ksp 2>/dev/null || true
+        rm -rf build/generated/ksp 2>/dev/null || true
+        # Clear all build intermediates that might interfere with Room generation
+        rm -rf app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar 2>/dev/null || true
+        rm -rf app/build/intermediates/compile_library_classes_jar 2>/dev/null || true
+        rm -rf app/build/tmp/kotlin-classes 2>/dev/null || true
+        # Force clean Room schema location
+        rm -rf app/schemas 2>/dev/null || true
+        mkdir -p app/schemas
+      continue-on-error: true
+        
+    - name: Force Room DAO generation for lint
+      run: |
+        # Force Room DAO generation before running lint
+        echo "Forcing Room DAO generation for lint analysis..."
+        ./gradlew kspDebugKotlin --stacktrace --no-daemon
+        
+        # Verify Room DAOs were generated
+        if [ ! -d "app/build/generated/ksp/debug/kotlin" ]; then
+          echo "Room DAO generation failed, retrying with clean build..."
+          ./gradlew clean kspDebugKotlin --stacktrace --no-daemon
+        fi
       
     - name: Run lint analysis with error handling
       run: |
