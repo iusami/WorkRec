@@ -56,7 +56,8 @@ This project follows **Clean Architecture** principles combined with the **MVVM*
 | **Navigation** | Navigation Compose | 2.7.6 |
 | **Async Programming** | Kotlin Coroutines + Flow | 1.7.3 |
 | **Language** | Kotlin | 1.9.22 |
-| **Build System** | Gradle | 8.5 |
+| **Build System** | Gradle + KSP | 8.5 |
+| **Code Generation** | KSP (Kotlin Symbol Processing) | Latest |
 | **Testing** | JUnit + Mockk + Truth | - |
 
 #### Dependency Injection Architecture

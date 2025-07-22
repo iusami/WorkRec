@@ -3,7 +3,6 @@ import java.time.Duration
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-kapt")
     id("com.google.devtools.ksp")
     id("dagger.hilt.android.plugin")
     id("kotlin-parcelize")
@@ -155,22 +154,15 @@ tasks.withType<com.android.build.gradle.tasks.factory.AndroidUnitTest> {
     forkEvery = 50
 }
 
-// Kapt Optimization for Annotation Processing (Hilt only)
-kapt {
-    correctErrorTypes = true
-    useBuildCache = true
-    mapDiagnosticLocations = true
-    showProcessorStats = true
-    arguments {
-        arg("dagger.hilt.shareTestComponents", "true")
-        arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
-        arg("dagger.fastInit", "enabled")
-        arg("dagger.formatGeneratedSource", "disabled")
-    }
-}
-
-// KSP Optimization for Symbol Processing (Room only)
+// KSP Optimization for both Hilt and Room
 ksp {
+    // Hilt configuration (migrated from KAPT)
+    arg("dagger.hilt.shareTestComponents", "true")
+    arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
+    arg("dagger.fastInit", "enabled")
+    arg("dagger.formatGeneratedSource", "disabled")
+    
+    // Room configuration
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.expandProjection", "true")
     arg("room.generateKotlin", "true")
@@ -185,20 +177,20 @@ ksp {
     }
 }
 
-// KSP and KAPT configuration - ensure Room DAOs are generated before Hilt processing
+// KSP configuration - ensure all annotation processing is handled by KSP
 afterEvaluate {
-    // Use specific task names to avoid circular dependencies
-    tasks.findByName("kaptDebugKotlin")?.mustRunAfter("kspDebugKotlin")
-    tasks.findByName("kaptReleaseKotlin")?.mustRunAfter("kspReleaseKotlin")
-    
-    // Ensure KAPT stub generation waits for KSP
-    tasks.findByName("kaptGenerateStubsDebugKotlin")?.mustRunAfter("kspDebugKotlin")
-    tasks.findByName("kaptGenerateStubsReleaseKotlin")?.mustRunAfter("kspReleaseKotlin")
-    
     // CI環境では、KSPタスクを強制的に実行
     if (System.getenv("CI") == "true") {
         tasks.withType<com.google.devtools.ksp.gradle.KspTask>().configureEach {
             outputs.upToDateWhen { false }
+        }
+        
+        // CI環境では、リポジトリ実装クラスのコンパイルを確実に行う
+        tasks.named("compileDebugKotlin") {
+            dependsOn("kspDebugKotlin")
+        }
+        tasks.named("compileReleaseKotlin") {
+            dependsOn("kspReleaseKotlin")
         }
     }
 }
@@ -234,7 +226,7 @@ dependencies {
     // Hilt Dependency Injection
     implementation("com.google.dagger:hilt-android:$hilt_version")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-    kapt("com.google.dagger:hilt-compiler:$hilt_version")
+    ksp("com.google.dagger:hilt-compiler:$hilt_version")
 
     // Room Database
     implementation("androidx.room:room-runtime:$room_version")

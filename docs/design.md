@@ -153,7 +153,8 @@ class WorkoutViewModel @Inject constructor(
 ### ビルド・開発ツール
 - **Kotlin DSL**: Gradleビルドスクリプト
 - **Version Catalog**: 依存関係の一元管理
-- **KSP (Kotlin Symbol Processing)**: コード生成の高速化
+- **KSP (Kotlin Symbol Processing)**: 高速コード生成（KAPT代替）
+- **Hilt + KSP**: 依存性注入の最適化されたコード生成
 
 ## プロジェクト構造
 
