@@ -51,13 +51,23 @@ This project follows **Clean Architecture** principles combined with the **MVVM*
 |-----------|------------|---------|
 | **UI Framework** | Jetpack Compose | 1.5.8 |
 | **Architecture** | MVVM + Clean Architecture | - |
-| **Dependency Injection** | Hilt | 2.48 |
+| **Dependency Injection** | Hilt (Modular DI Design) | 2.48 |
 | **Database** | Room | 2.7.0-alpha01 |
 | **Navigation** | Navigation Compose | 2.7.6 |
 | **Async Programming** | Kotlin Coroutines + Flow | 1.7.3 |
 | **Language** | Kotlin | 1.9.22 |
 | **Build System** | Gradle | 8.5 |
 | **Testing** | JUnit + Mockk + Truth | - |
+
+#### Dependency Injection Architecture
+
+The project implements a **modular dependency injection design** with layer-specific Hilt modules:
+
+- **Data Layer DI** (`data/di/`): `DatabaseModule.kt`, `RepositoryModule.kt`
+- **Domain Layer DI** (`domain/di/`): `UseCaseModule.kt` 
+- **Presentation Layer DI**: Auto-injection via `@HiltViewModel`
+
+The `UseCaseModule.kt` enables automatic dependency resolution for use cases through `@Inject` constructors, eliminating the need for explicit `@Provides` methods while ensuring Hilt recognizes all domain layer components.
 
 ## Prerequisites
 
@@ -80,7 +90,8 @@ app/
 │   ├── domain/                 # Domain Layer
 │   │   ├── entities/          # Business entities
 │   │   ├── repository/        # Repository interfaces
-│   │   └── usecase/           # Use cases (business logic)
+│   │   ├── usecase/           # Use cases (business logic)
+│   │   └── di/                # Domain layer Hilt modules
 │   ├── presentation/          # Presentation Layer
 │   │   ├── ui/               # Jetpack Compose screens & components
 │   │   ├── viewmodel/        # ViewModels
@@ -142,6 +153,37 @@ Android Studio will automatically prompt to sync the project. If not:
 # Compile Kotlin (type checking)
 ./gradlew compileDebugKotlin
 ```
+
+### Build Configuration
+
+The project includes advanced build optimizations for reliable CI/CD execution and improved development experience.
+
+#### Build Optimization Features
+
+- **KSP/KAPT Task Ordering**: Ensures proper execution order to prevent race conditions in CI environments
+- **Parallel Execution**: Automatically scales to available CPU cores with memory optimization
+- **Multi-Layer Caching**: Intelligent caching strategy for dependencies, build outputs, and generated sources
+- **Change Detection**: Selective build execution based on file change analysis
+
+#### Task Dependency Management
+
+The build system enforces proper task execution order to ensure reliable builds:
+
+```kotlin
+afterEvaluate {
+    // Ensure KSP runs before KAPT to generate Room DAOs first
+    tasks.withType<KaptTask>().configureEach {
+        mustRunAfter(tasks.withType<KspTask>())
+    }
+    
+    // Ensure Kotlin compilation waits for KSP-generated sources
+    tasks.withType<KotlinCompile>().configureEach {
+        dependsOn(tasks.withType<KspTask>())
+    }
+}
+```
+
+This configuration prevents intermittent build failures and ensures consistent compilation order across all environments.
 
 ### Testing
 

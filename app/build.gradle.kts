@@ -175,9 +175,27 @@ ksp {
     arg("room.incremental", "true")
     arg("room.expandProjection", "true")
     arg("room.generateKotlin", "true")
+    // Force Room to generate all DAOs even in CI environment
+    arg("room.generateKotlinCodeByDefault", "true")
 }
 
-// KSP and KAPT configuration - no explicit task dependencies needed
+// KSP and KAPT configuration - ensure proper execution order for CI
+afterEvaluate {
+    // Ensure KSP runs before KAPT to generate Room DAOs first
+    tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptTask>().configureEach {
+        mustRunAfter(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+    
+    // Ensure Kotlin compilation waits for KSP
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        dependsOn(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+    
+    // Ensure KAPT stub generation waits for KSP
+    tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptGenerateStubsTask>().configureEach {
+        dependsOn(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+}
 
 dependencies {
     val compose_version = "1.5.8"

@@ -69,6 +69,75 @@
 
 ### 依存性注入
 - **Hilt**: Daggerベースの簡素化された依存性注入フレームワーク
+- **モジュール化DI設計**: 層別の依存性注入モジュール（DatabaseModule、RepositoryModule、UseCaseModule）
+
+#### Hilt依存性注入アーキテクチャ
+
+本プロジェクトでは、Clean Architectureの各層に対応した**モジュール化依存性注入設計**を採用しています：
+
+##### 1. データ層DI（`data/di/`）
+```kotlin
+// DatabaseModule.kt - データベース関連の依存性
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+    @Provides
+    @Singleton
+    fun provideWorkoutDatabase(@ApplicationContext context: Context): WorkoutDatabase
+    
+    @Provides
+    fun provideWorkoutDao(database: WorkoutDatabase): WorkoutDao
+    
+    @Provides
+    fun provideGoalDao(database: WorkoutDatabase): GoalDao
+}
+
+// RepositoryModule.kt - リポジトリ実装の依存性
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+    @Binds
+    abstract fun bindWorkoutRepository(impl: WorkoutRepositoryImpl): WorkoutRepository
+    
+    @Binds
+    abstract fun bindGoalRepository(impl: GoalRepositoryImpl): GoalRepository
+}
+```
+
+##### 2. ドメイン層DI（`domain/di/`）
+```kotlin
+// UseCaseModule.kt - ユースケース依存性の管理
+@Module
+@InstallIn(SingletonComponent::class)
+object UseCaseModule {
+    // UseCaseクラスは@Injectコンストラクタを持つため、
+    // 明示的な@Providesメソッドは不要
+    // このモジュールはHiltにUseCaseパッケージを認識させるために存在
+}
+```
+
+**UseCaseModuleの設計思想**：
+- **自動依存性解決**: `@Inject`コンストラクタによる自動的な依存性注入
+- **パッケージ認識**: Hiltがドメイン層のUseCaseクラスを確実に認識
+- **拡張性**: 新しいUseCaseクラス追加時の設定不要
+- **保守性**: 明示的な設定が不要なため、メンテナンスコストが低い
+
+##### 3. プレゼンテーション層DI（自動注入）
+```kotlin
+// ViewModelは@HiltViewModelアノテーションで自動注入
+@HiltViewModel
+class WorkoutViewModel @Inject constructor(
+    private val addWorkoutUseCase: AddWorkoutUseCase,
+    private val getWorkoutHistoryUseCase: GetWorkoutHistoryUseCase
+) : ViewModel()
+```
+
+#### DI設計の利点
+
+- **層別分離**: 各層の依存性が明確に分離され、責任範囲が明確
+- **テスタビリティ**: モックオブジェクトの注入が容易
+- **スケーラビリティ**: 新機能追加時の依存性管理が自動化
+- **型安全性**: コンパイル時の依存性検証
 
 ### 非同期処理・パフォーマンス
 - **Kotlin Coroutines**: 非同期処理とスレッド管理
@@ -110,14 +179,19 @@ app/
 │   │   ├── repository/                # リポジトリインターフェース
 │   │   │   ├── WorkoutRepository.kt
 │   │   │   └── GoalRepository.kt
-│   │   └── usecase/                   # ユースケース（ビジネスロジック）
-│   │       ├── workout/
-│   │       │   ├── AddWorkoutUseCase.kt
-│   │       │   ├── GetWorkoutHistoryUseCase.kt
-│   │       │   └── DeleteWorkoutUseCase.kt
-│   │       └── goal/
-│   │           ├── SetGoalUseCase.kt
-│   │           └── GetGoalProgressUseCase.kt
+│   │   ├── usecase/                   # ユースケース（ビジネスロジック）
+│   │   │   ├── workout/
+│   │   │   │   ├── AddWorkoutUseCase.kt
+│   │   │   │   ├── GetWorkoutHistoryUseCase.kt
+│   │   │   │   └── DeleteWorkoutUseCase.kt
+│   │   │   ├── goal/
+│   │   │   │   ├── SetGoalUseCase.kt
+│   │   │   │   └── GetGoalProgressUseCase.kt
+│   │   │   ├── progress/
+│   │   │   ├── calendar/
+│   │   │   └── exercise/
+│   │   └── di/                        # ドメイン層のHiltモジュール
+│   │       └── UseCaseModule.kt
 │   ├── presentation/                  # プレゼンテーション層
 │   │   ├── ui/                        # Compose UI
 │   │   │   ├── screens/               # 各画面のComposable
@@ -432,11 +506,41 @@ data class GoalWithProgress(
 - **レスポンシブデザインテスト**: 画面サイズ対応の検証
 - **キーボードナビゲーション**: 支援技術対応
 
-### CI/CD最適化テスト設定
+### CI/CD最適化設定
+
+#### ビルド信頼性の向上
+
+プロジェクトでは、CI/CD環境での安定したビルド実行を実現するため、以下の最適化を実装：
+
+##### KSP/KAPTタスク順序制御
+```kotlin
+// build.gradle.kts での設定 - CI環境での適切な実行順序を保証
+afterEvaluate {
+    // KSPがKAPTより先に実行されることを保証（Room DAO生成のため）
+    tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptTask>().configureEach {
+        mustRunAfter(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+    
+    // KotlinコンパイルがKSPの完了を待つことを保証
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        dependsOn(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+    
+    // KAPTスタブ生成がKSPの完了を待つことを保証
+    tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptGenerateStubsTask>().configureEach {
+        dependsOn(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+}
+```
+
+**効果:**
+- **レースコンディション防止**: Room DAOがKAPT処理前に確実に生成される
+- **CI信頼性向上**: 並列環境での間欠的ビルド失敗を排除
+- **ビルド決定性**: 全環境で一貫したタスク実行順序を保証
 
 #### 並列テスト実行の最適化
 
-プロジェクトでは、CI/CD環境での高速テスト実行を実現するため、以下の最適化を実装：
+CI/CD環境での高速テスト実行を実現するため、以下の最適化を実装：
 
 ##### 単体テスト最適化
 ```kotlin

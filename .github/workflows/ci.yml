@@ -341,6 +341,9 @@ jobs:
         # Basic cache cleanup
         find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
         find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
+        # Clear KSP generated files to ensure fresh generation in CI
+        rm -rf app/build/generated/ksp 2>/dev/null || true
+        rm -rf build/generated/ksp 2>/dev/null || true
       continue-on-error: true
       
     - name: Build debug APK with error handling
