@@ -161,6 +161,7 @@ The project includes advanced build optimizations for reliable CI/CD execution a
 #### Build Optimization Features
 
 - **KSP/KAPT Task Ordering**: Ensures proper execution order to prevent race conditions in CI environments
+- **KSP CI Optimization**: Environment-specific configuration for reliable Room DAO generation in CI
 - **Parallel Execution**: Automatically scales to available CPU cores with memory optimization
 - **Multi-Layer Caching**: Intelligent caching strategy for dependencies, build outputs, and generated sources
 - **Change Detection**: Selective build execution based on file change analysis

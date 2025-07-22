@@ -172,21 +172,34 @@ kapt {
 // KSP Optimization for Symbol Processing (Room only)
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
-    arg("room.incremental", "true")
     arg("room.expandProjection", "true")
     arg("room.generateKotlin", "true")
-    // Force Room to generate all DAOs even in CI environment
     arg("room.generateKotlinCodeByDefault", "true")
+    
+    // CI環境では確実にRoom DAOを生成するため、インクリメンタル処理を無効化
+    if (System.getenv("CI") == "true") {
+        arg("room.incremental", "false")
+        arg("room.forceGenerateAll", "true")
+    } else {
+        arg("room.incremental", "true")
+    }
 }
 
-// KSP and KAPT configuration - minimal dependencies to avoid circular dependency
+// KSP and KAPT configuration - ensure Room DAOs are generated before Hilt processing
 afterEvaluate {
-    // Only ensure KAPT runs after KSP for the main source set
-    tasks.named("kaptDebugKotlin") {
-        mustRunAfter("kspDebugKotlin")
-    }
-    tasks.named("kaptReleaseKotlin") {
-        mustRunAfter("kspReleaseKotlin")
+    // Use specific task names to avoid circular dependencies
+    tasks.findByName("kaptDebugKotlin")?.mustRunAfter("kspDebugKotlin")
+    tasks.findByName("kaptReleaseKotlin")?.mustRunAfter("kspReleaseKotlin")
+    
+    // Ensure KAPT stub generation waits for KSP
+    tasks.findByName("kaptGenerateStubsDebugKotlin")?.mustRunAfter("kspDebugKotlin")
+    tasks.findByName("kaptGenerateStubsReleaseKotlin")?.mustRunAfter("kspReleaseKotlin")
+    
+    // CI環境では、KSPタスクを強制的に実行
+    if (System.getenv("CI") == "true") {
+        tasks.withType<com.google.devtools.ksp.gradle.KspTask>().configureEach {
+            outputs.upToDateWhen { false }
+        }
     }
 }
 
