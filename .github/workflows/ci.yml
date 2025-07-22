@@ -200,6 +200,14 @@ jobs:
           ./gradlew clean kspDebugKotlin --stacktrace --no-daemon
         fi
         
+        # List generated files for debugging
+        echo "Generated KSP files:"
+        find app/build/generated/ksp -name "*.kt" -type f 2>/dev/null || echo "No KSP files found"
+        
+        # Force compilation of generated sources
+        echo "Compiling generated sources..."
+        ./gradlew compileDebugKotlin --stacktrace --no-daemon
+        
     - name: Run unit tests with error handling
       run: |
         # Run tests with basic error handling
