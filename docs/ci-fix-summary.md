@@ -232,9 +232,37 @@ These fixes resolve the CI workflow validation errors while maintaining all the 
 
 The workflow should now run successfully without syntax errors or missing script dependencies.
 
+### 5. PR Validation Workflow Issues
+
+**Problem**: The `pr-validation.yml` workflow had the same issues as the main CI workflow.
+
+**Location**: `.github/workflows/pr-validation.yml`
+
+**Issues Fixed**:
+- Complex script dependencies causing "cannot access scripts" errors
+- Simplified error handling for lint, test, and build-debug jobs
+- Removed dependencies on external scripts that weren't available in CI environment
+
+**Changes Made**:
+```yaml
+# Before (complex script dependencies)
+- name: Run lint analysis with error handling
+  run: scripts/build-retry-wrapper.sh lint
+
+# After (simplified inline error handling)
+- name: Run lint analysis with error handling
+  run: |
+    if ! ./gradlew lint --stacktrace; then
+      echo "Lint failed, attempting retry..."
+      sleep 5
+      ./gradlew clean lint --stacktrace
+    fi
+```
+
 ## Next Steps
 
-1. The CI workflow should now pass validation and run successfully
+1. Both CI and PR validation workflows should now pass validation and run successfully
 2. The complex scripts in the `scripts/` directory are still available for future use when dependencies are properly set up
 3. The simplified error handling provides basic retry logic without external dependencies
 4. All build optimization features remain functional with the simplified approach
+5. PR validation now works consistently with the main CI workflow
