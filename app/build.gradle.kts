@@ -179,21 +179,14 @@ ksp {
     arg("room.generateKotlinCodeByDefault", "true")
 }
 
-// KSP and KAPT configuration - ensure proper execution order for CI
+// KSP and KAPT configuration - minimal dependencies to avoid circular dependency
 afterEvaluate {
-    // Ensure KSP runs before KAPT to generate Room DAOs first
-    tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptTask>().configureEach {
-        mustRunAfter(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    // Only ensure KAPT runs after KSP for the main source set
+    tasks.named("kaptDebugKotlin") {
+        mustRunAfter("kspDebugKotlin")
     }
-    
-    // Ensure Kotlin compilation waits for KSP
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        dependsOn(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
-    }
-    
-    // Ensure KAPT stub generation waits for KSP
-    tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptGenerateStubsTask>().configureEach {
-        dependsOn(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    tasks.named("kaptReleaseKotlin") {
+        mustRunAfter("kspReleaseKotlin")
     }
 }
 
