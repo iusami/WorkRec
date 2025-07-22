@@ -85,6 +85,56 @@ env:
 
 **Explanation**: Replaced complex script calls with inline bash error handling that doesn't require external dependencies.
 
+### 4. GitHub Actions Cache 400 Error
+
+**Problem**: The build-debug job was experiencing cache service 400 errors due to complex multi-layer caching strategy and invalid cache keys.
+
+**Location**: build-debug job in `.github/workflows/ci.yml`
+
+**Original Code**:
+```yaml
+# Multi-layer caching strategy with 5 separate cache layers
+- name: Cache Gradle dependencies
+  uses: actions/cache@v4
+  with:
+    path: |
+      ~/.gradle/caches/modules-2
+      ~/.gradle/caches/jars-9
+      ~/.gradle/caches/transforms-3
+      ~/.gradle/wrapper
+    key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
+    # ... multiple restore-keys
+```
+
+**Fixed Code**:
+```yaml
+# Simplified caching strategy to avoid 400 errors
+- name: Cache Gradle
+  uses: actions/cache@v4
+  with:
+    path: |
+      ~/.gradle/caches
+      ~/.gradle/wrapper
+      .gradle
+    key: ${{ runner.os }}-gradle-debug-${{ hashFiles('**/*.gradle*', 'gradle.properties') }}
+    restore-keys: |
+      ${{ runner.os }}-gradle-debug-
+      ${{ runner.os }}-gradle-
+
+- name: Cache build outputs
+  uses: actions/cache@v4
+  with:
+    path: |
+      app/build/intermediates
+      app/build/tmp
+      app/build/generated
+    key: ${{ runner.os }}-build-debug-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}
+    restore-keys: |
+      ${{ runner.os }}-build-debug-
+```
+
+**Explanation**: Simplified the complex 5-layer caching strategy into 2 simple cache layers with shorter, cleaner cache keys to avoid GitHub Actions cache service limitations.
+
 ## Jobs Affected
 
 The following jobs were updated to fix the syntax errors:
@@ -166,8 +216,10 @@ After the fixes:
 - ✅ No more "Unrecognized named-value: 'env'" errors
 - ✅ No more "save-always does not work as intended" warnings
 - ✅ No more "cannot access scripts" errors
+- ✅ No more "Cache service responded with 400" errors
 - ✅ Workflow syntax is now valid
 - ✅ All optimization features remain intact
+- ✅ Simplified caching strategy reduces complexity and improves reliability
 
 ## Impact
 

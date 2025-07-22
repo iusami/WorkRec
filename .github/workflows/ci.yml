@@ -300,82 +300,35 @@ jobs:
       uses: gradle/gradle-build-action@v2
       with:
         gradle-home-cache-cleanup: true
+        cache-read-only: false
+        cache-write-only: false
+        gradle-home-cache-strict-match: false
         
-    # Multi-layer caching strategy for optimal build performance
-    # Layer 1: Gradle Dependencies Cache - Most stable, changes infrequently
-    - name: Cache Gradle dependencies
+    # Simplified caching strategy to avoid 400 errors
+    # Primary Gradle cache - dependencies and build cache
+    - name: Cache Gradle
       uses: actions/cache@v4
       with:
         path: |
-          ~/.gradle/caches/modules-2
-          ~/.gradle/caches/jars-9
-          ~/.gradle/caches/transforms-3
+          ~/.gradle/caches
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
+          .gradle
+        key: ${{ runner.os }}-gradle-debug-${{ hashFiles('**/*.gradle*', 'gradle.properties') }}
         restore-keys: |
-          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties') }}
-          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
-          ${{ runner.os }}-gradle-deps-
+          ${{ runner.os }}-gradle-debug-
+          ${{ runner.os }}-gradle-
           
-    # Layer 2: Gradle Build Cache - Intermediate compilation results
-    - name: Cache Gradle build cache
+    # Build outputs cache
+    - name: Cache build outputs
       uses: actions/cache@v4
       with:
         path: |
-          ~/.gradle/caches/build-cache-1
-          .gradle/build-cache
-        key: ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}-${{ github.sha }}
+          app/build/intermediates
+          app/build/tmp
+          app/build/generated
+        key: ${{ runner.os }}-build-debug-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}
         restore-keys: |
-          ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
-          ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
-          ${{ runner.os }}-gradle-build-
-          
-    # Layer 3: Build Intermediates Cache - Compilation outputs
-    - name: Cache build intermediates
-      uses: actions/cache@v4
-      with:
-        path: |
-          app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar
-          app/build/intermediates/compile_library_classes_jar
-          app/build/intermediates/compile_r_class_jar
-          app/build/intermediates/incremental
-          app/build/intermediates/javac
-          app/build/intermediates/runtime_library_classes_jar
-          app/build/tmp/compileDebugKotlin
-          app/build/tmp/compileReleaseKotlin
-          build/kotlin
-        key: ${{ runner.os }}-build-intermediates-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-build-intermediates-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}
-          ${{ runner.os }}-build-intermediates-${{ github.base_ref || github.ref_name }}
-          ${{ runner.os }}-build-intermediates-
-          
-    # Layer 4: KSP Generated Files Cache - Annotation processing outputs
-    - name: Cache KSP generated files
-      uses: actions/cache@v4
-      with:
-        path: |
-          app/build/generated/ksp
-          build/generated/ksp
-        key: ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*', 'app/src/**/*') }}
-        restore-keys: |
-          ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
-          ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java') }}
-          ${{ runner.os }}-ksp-
-          
-    # Layer 5: Android Resources Cache - Resource compilation outputs
-    - name: Cache Android resources
-      uses: actions/cache@v4
-      with:
-        path: |
-          app/build/intermediates/merged_res
-          app/build/intermediates/processed_res
-          app/build/intermediates/res
-          app/build/intermediates/symbol_list
-        key: ${{ runner.os }}-android-res-${{ hashFiles('app/src/main/res/**/*', 'app/src/main/AndroidManifest.xml') }}
-        restore-keys: |
-          ${{ runner.os }}-android-res-
+          ${{ runner.os }}-build-debug-
           
     - name: Make scripts executable
       run: |
