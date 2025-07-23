@@ -190,7 +190,7 @@ class GoalCardTest {
     private fun createTestGoal(): Goal {
         return Goal(
             id = 1L,
-            type = GoalType.WEIGHT,
+            type = GoalType.STRENGTH,
             title = "ベンチプレス100kg",
             description = "目標説明テスト",
             targetValue = 100.0,
@@ -198,7 +198,8 @@ class GoalCardTest {
             unit = "kg",
             deadline = LocalDate(2024, 12, 31),
             isCompleted = false,
-            createdAt = LocalDate(2024, 1, 1)
+            createdAt = LocalDate(2024, 1, 1),
+            updatedAt = LocalDate(2024, 1, 1)
         )
     }
 }

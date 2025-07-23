@@ -38,4 +38,19 @@ interface GoalDao {
     @Transaction
     @Query("SELECT * FROM goals WHERE id = :goalId")
     fun getGoalWithProgressById(goalId: Long): Flow<GoalWithProgress?>
+
+    // Optimized query methods for goal filtering
+    @Query("SELECT * FROM goals WHERE isCompleted = 0")
+    fun getActiveGoals(): Flow<List<GoalEntity>>
+
+    @Query("SELECT * FROM goals WHERE isCompleted = 1")
+    fun getCompletedGoals(): Flow<List<GoalEntity>>
+
+    @Transaction
+    @Query("SELECT * FROM goals WHERE isCompleted = 0")
+    fun getActiveGoalsWithProgress(): Flow<List<GoalWithProgress>>
+
+    @Transaction
+    @Query("SELECT * FROM goals WHERE isCompleted = 1")
+    fun getCompletedGoalsWithProgress(): Flow<List<GoalWithProgress>>
 }

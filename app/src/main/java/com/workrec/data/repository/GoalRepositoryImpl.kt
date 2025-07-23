@@ -35,14 +35,14 @@ class GoalRepositoryImpl @Inject constructor(
     }
 
     override fun getActiveGoals(): Flow<List<Goal>> {
-        return goalDao.getAllGoals().map { goalEntities ->
-            goalEntities.filter { !it.isCompleted }.map { it.toDomainModel() }
+        return goalDao.getActiveGoals().map { goalEntities ->
+            goalEntities.map { it.toDomainModel() }
         }
     }
 
     override fun getCompletedGoals(): Flow<List<Goal>> {
-        return goalDao.getAllGoals().map { goalEntities ->
-            goalEntities.filter { it.isCompleted }.map { it.toDomainModel() }
+        return goalDao.getCompletedGoals().map { goalEntities ->
+            goalEntities.map { it.toDomainModel() }
         }
     }
 

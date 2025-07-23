@@ -22,7 +22,7 @@ import com.workrec.data.database.entities.*
         GoalProgressEntity::class,
         ExerciseTemplateEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(
