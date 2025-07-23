@@ -222,12 +222,27 @@ class GoalRepositoryImpl @Inject constructor(
 
 ### DAO Operations
 
-The `GoalDao` provides optimized queries using the relation:
+The `GoalDao` provides optimized queries using database-level filtering and relations:
 
 ```kotlin
 @Dao
 interface GoalDao {
     
+    // Basic goal queries
+    @Query("SELECT * FROM goals")
+    fun getAllGoals(): Flow<List<GoalEntity>>
+    
+    @Query("SELECT * FROM goals WHERE id = :goalId")
+    suspend fun getGoalById(goalId: Long): GoalEntity?
+    
+    // Optimized filtering queries - NEW: Database-level filtering
+    @Query("SELECT * FROM goals WHERE isCompleted = 0")
+    fun getActiveGoals(): Flow<List<GoalEntity>>
+    
+    @Query("SELECT * FROM goals WHERE isCompleted = 1")
+    fun getCompletedGoals(): Flow<List<GoalEntity>>
+    
+    // Relation queries with progress data
     @Transaction
     @Query("SELECT * FROM goals WHERE id = :goalId")
     fun getGoalWithProgressById(goalId: Long): Flow<GoalWithProgress?>
@@ -235,6 +250,10 @@ interface GoalDao {
     @Transaction
     @Query("SELECT * FROM goals WHERE isCompleted = 0")
     fun getActiveGoalsWithProgress(): Flow<List<GoalWithProgress>>
+    
+    @Transaction
+    @Query("SELECT * FROM goals WHERE isCompleted = 1")
+    fun getCompletedGoalsWithProgress(): Flow<List<GoalWithProgress>>
     
     @Transaction
     @Query("SELECT * FROM goals ORDER BY updatedAt DESC")
@@ -247,6 +266,8 @@ interface GoalDao {
 - `Flow` provides reactive data streams
 - Efficient JOIN operations handled by Room
 - Automatic relationship resolution
+- **Database-level filtering**: New optimized queries filter at database level instead of in-memory
+- **Performance improvement**: Reduced memory usage and faster query execution for large datasets
 
 ## Type Converters
 
@@ -285,6 +306,41 @@ class GoalTypeConverters {
 ```
 
 ## Performance Considerations
+
+### Goal Repository Optimization (Latest Update)
+
+The GoalDao has been recently optimized with database-level filtering methods to improve performance:
+
+**Before Optimization:**
+```kotlin
+// Inefficient: Loads all goals then filters in memory
+override fun getActiveGoals(): Flow<List<Goal>> {
+    return goalDao.getAllGoals().map { goalEntities ->
+        goalEntities.filter { !it.isCompleted }.map { it.toDomainModel() }
+    }
+}
+```
+
+**After Optimization:**
+```kotlin
+// Efficient: Database-level filtering
+override fun getActiveGoals(): Flow<List<Goal>> {
+    return goalDao.getActiveGoals().map { goalEntities ->
+        goalEntities.map { it.toDomainModel() }
+    }
+}
+```
+
+**Performance Benefits:**
+- **Reduced Memory Usage**: Only loads filtered results instead of entire dataset
+- **Faster Query Execution**: Database performs filtering using indexed queries
+- **Better Scalability**: Performance remains consistent as dataset grows
+- **Reduced Data Transfer**: Less data moved between database and application layers
+
+**Recommended Index for Optimal Performance:**
+```sql
+CREATE INDEX idx_goals_isCompleted ON goals(isCompleted);
+```
 
 ### Indexing Strategy
 

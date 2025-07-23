@@ -600,3 +600,42 @@ testOptions {
 - **テスト実行時間**: 並列実行により大幅な高速化を実現
 - **テスト安定性**: Test Orchestrator とアニメーション無効化による安定実行
 - **リソース効率**: メモリ最適化による CI/CD 環境での安定動作
+
+## 最新の実装状況
+
+### Goal Repository 最適化プロジェクト（進行中）
+
+**実装完了項目:**
+- ✅ **GoalDao 最適化クエリ実装**: データベースレベルでのフィルタリング機能を追加
+  - `getActiveGoals()`: アクティブな目標のみを取得
+  - `getCompletedGoals()`: 完了した目標のみを取得
+  - `getActiveGoalsWithProgress()`: アクティブな目標と進捗データを取得
+  - `getCompletedGoalsWithProgress()`: 完了した目標と進捗データを取得
+
+- ✅ **包括的単体テスト実装**: `GoalDaoTest.kt` による完全なテストカバレッジ
+  - アクティブ/完了目標の正確なフィルタリング検証
+  - 空データセットとエッジケースの処理確認
+  - Flow リアクティブストリームの動作検証
+  - 大量データでの混在状態フィルタリング性能確認
+
+**技術的実装詳細:**
+```kotlin
+// 最適化されたクエリ例
+@Query("SELECT * FROM goals WHERE isCompleted = 0")
+fun getActiveGoals(): Flow<List<GoalEntity>>
+
+@Transaction
+@Query("SELECT * FROM goals WHERE isCompleted = 0")
+fun getActiveGoalsWithProgress(): Flow<List<GoalWithProgress>>
+```
+
+**パフォーマンス改善効果:**
+- **メモリ使用量削減**: 全データ読み込み → 必要データのみ取得
+- **クエリ性能向上**: インメモリフィルタリング → データベースレベルフィルタリング
+- **スケーラビリティ向上**: O(n) → O(log n) 時間複雑度（インデックス使用時）
+
+**次のステップ:**
+- GoalRepositoryImpl の最適化実装
+- リポジトリレイヤーの単体テスト追加
+- データベースインデックス追加による性能向上
+- 統合テストとパフォーマンスベンチマーク実行
