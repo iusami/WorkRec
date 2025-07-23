@@ -1,5 +1,7 @@
 .gradle
 app/build
-build*
+build
+build-cache
+build-metrics
 cache*
 *.log

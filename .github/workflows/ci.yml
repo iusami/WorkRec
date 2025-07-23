@@ -147,7 +147,6 @@ jobs:
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
           ${{ runner.os }}-gradle-deps-
-        save-always: true
           
     # Layer 2: Gradle Build Cache - Intermediate compilation results
     - name: Cache Gradle build cache
@@ -161,7 +160,6 @@ jobs:
           ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
           ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
           ${{ runner.os }}-gradle-build-
-        save-always: true
           
     # Layer 3: Test Cache - Test compilation and execution cache
     - name: Cache test outputs
@@ -180,31 +178,51 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/cache-management.sh
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
-        
-    # Initialize error handling and notification systems
-    - name: Initialize error handling system
-      run: |
-        scripts/error-handling.sh validate
-        scripts/notification-system.sh init
-      continue-on-error: true
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
     # Cache management and optimization with error handling
     - name: Optimize cache structure with error handling
-      run: scripts/cache-management.sh optimize
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       continue-on-error: true
       
-    - name: Run unit tests with comprehensive error handling
-      run: scripts/build-retry-wrapper.sh test
+    - name: Force Room DAO generation
+      run: |
+        # Force Room DAO generation before running tests
+        echo "Forcing Room DAO generation..."
+        ./gradlew kspDebugKotlin --stacktrace --no-daemon
+        
+        # Verify Room DAOs were generated
+        if [ ! -d "app/build/generated/ksp/debug/kotlin" ]; then
+          echo "Room DAO generation failed, retrying with clean build..."
+          ./gradlew clean kspDebugKotlin --stacktrace --no-daemon
+        fi
+        
+        # List generated files for debugging
+        echo "Generated KSP files:"
+        find app/build/generated/ksp -name "*.kt" -type f 2>/dev/null || echo "No KSP files found"
+        
+        # Force compilation of generated sources
+        echo "Compiling generated sources..."
+        ./gradlew compileDebugKotlin --stacktrace --no-daemon
+        
+    - name: Run unit tests with error handling
+      run: |
+        # Run tests with basic error handling
+        if ! ./gradlew testDebugUnitTest --stacktrace; then
+          echo "Tests failed, attempting retry..."
+          sleep 5
+          ./gradlew clean testDebugUnitTest --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report test failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "unit-tests" "Unit tests failed in CI pipeline"
+        echo "Unit tests failed in CI pipeline"
+        echo "::error title=Tests Failed::Unit tests failed after retry attempts"
       continue-on-error: true
       
     - name: Upload test results
@@ -222,7 +240,7 @@ jobs:
     needs: [change-detection, strategy-matrix]
     if: needs.strategy-matrix.outputs.lint-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -250,23 +268,57 @@ jobs:
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
         restore-keys: |
           ${{ runner.os }}-gradle-deps-
-        save-always: true
         
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
+        
+    # Cache management and optimization with error handling
+    - name: Optimize cache structure with error handling
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
+        # Clear KSP generated files to ensure fresh generation in CI
+        rm -rf app/build/generated/ksp 2>/dev/null || true
+        rm -rf build/generated/ksp 2>/dev/null || true
+        # Clear all build intermediates that might interfere with Room generation
+        rm -rf app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar 2>/dev/null || true
+        rm -rf app/build/intermediates/compile_library_classes_jar 2>/dev/null || true
+        rm -rf app/build/tmp/kotlin-classes 2>/dev/null || true
+        # Force clean Room schema location
+        rm -rf app/schemas 2>/dev/null || true
+        mkdir -p app/schemas
+      continue-on-error: true
+        
+    - name: Force Room DAO generation for lint
+      run: |
+        # Force Room DAO generation before running lint
+        echo "Forcing Room DAO generation for lint analysis..."
+        ./gradlew kspDebugKotlin --stacktrace --no-daemon
+        
+        # Verify Room DAOs were generated
+        if [ ! -d "app/build/generated/ksp/debug/kotlin" ]; then
+          echo "Room DAO generation failed, retrying with clean build..."
+          ./gradlew clean kspDebugKotlin --stacktrace --no-daemon
+        fi
       
     - name: Run lint analysis with error handling
-      run: scripts/build-retry-wrapper.sh lint
+      run: |
+        # Run lint with basic error handling
+        if ! ./gradlew lint --stacktrace; then
+          echo "Lint failed, attempting retry..."
+          sleep 5
+          ./gradlew clean lint --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report lint failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "lint-analysis" "Lint analysis failed in CI pipeline"
+        echo "Lint analysis failed in CI pipeline"
+        echo "::error title=Lint Failed::Lint analysis failed after retry attempts"
       continue-on-error: true
       
     - name: Upload lint results
@@ -282,7 +334,7 @@ jobs:
     needs: [change-detection, strategy-matrix, test]
     if: needs.strategy-matrix.outputs.debug-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -298,129 +350,89 @@ jobs:
       uses: gradle/gradle-build-action@v2
       with:
         gradle-home-cache-cleanup: true
+        cache-read-only: false
+        cache-write-only: false
+        gradle-home-cache-strict-match: false
         
-    # Multi-layer caching strategy for optimal build performance
-    # Layer 1: Gradle Dependencies Cache - Most stable, changes infrequently
-    - name: Cache Gradle dependencies
+    # Simplified caching strategy to avoid 400 errors
+    # Primary Gradle cache - dependencies and build cache
+    - name: Cache Gradle
       uses: actions/cache@v4
       with:
         path: |
-          ~/.gradle/caches/modules-2
-          ~/.gradle/caches/jars-9
-          ~/.gradle/caches/transforms-3
+          ~/.gradle/caches
           ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
+          .gradle
+        key: ${{ runner.os }}-gradle-debug-${{ hashFiles('**/*.gradle*', 'gradle.properties') }}
         restore-keys: |
-          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties') }}
-          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
-          ${{ runner.os }}-gradle-deps-
-        save-always: true
+          ${{ runner.os }}-gradle-debug-
+          ${{ runner.os }}-gradle-
           
-    # Layer 2: Gradle Build Cache - Intermediate compilation results
-    - name: Cache Gradle build cache
+    # Build outputs cache
+    - name: Cache build outputs
       uses: actions/cache@v4
       with:
         path: |
-          ~/.gradle/caches/build-cache-1
-          .gradle/build-cache
-        key: ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}-${{ github.sha }}
+          app/build/intermediates
+          app/build/tmp
+          app/build/generated
+        key: ${{ runner.os }}-build-debug-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}
         restore-keys: |
-          ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
-          ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
-          ${{ runner.os }}-gradle-build-
-        save-always: true
-          
-    # Layer 3: Build Intermediates Cache - Compilation outputs
-    - name: Cache build intermediates
-      uses: actions/cache@v4
-      with:
-        path: |
-          app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar
-          app/build/intermediates/compile_library_classes_jar
-          app/build/intermediates/compile_r_class_jar
-          app/build/intermediates/incremental
-          app/build/intermediates/javac
-          app/build/intermediates/runtime_library_classes_jar
-          app/build/tmp/compileDebugKotlin
-          app/build/tmp/compileReleaseKotlin
-          build/kotlin
-        key: ${{ runner.os }}-build-intermediates-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-build-intermediates-${{ hashFiles('app/src/**/*.kt', 'app/src/**/*.java') }}
-          ${{ runner.os }}-build-intermediates-${{ github.base_ref || github.ref_name }}
-          ${{ runner.os }}-build-intermediates-
-          
-    # Layer 4: KSP Generated Files Cache - Annotation processing outputs
-    - name: Cache KSP generated files
-      uses: actions/cache@v4
-      with:
-        path: |
-          app/build/generated/ksp
-          build/generated/ksp
-        key: ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*', 'app/src/**/*') }}
-        restore-keys: |
-          ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
-          ${{ runner.os }}-ksp-${{ hashFiles('**/*.kt', '**/*.java') }}
-          ${{ runner.os }}-ksp-
-          
-    # Layer 5: Android Resources Cache - Resource compilation outputs
-    - name: Cache Android resources
-      uses: actions/cache@v4
-      with:
-        path: |
-          app/build/intermediates/merged_res
-          app/build/intermediates/processed_res
-          app/build/intermediates/res
-          app/build/intermediates/symbol_list
-        key: ${{ runner.os }}-android-res-${{ hashFiles('app/src/main/res/**/*', 'app/src/main/AndroidManifest.xml') }}
-        restore-keys: |
-          ${{ runner.os }}-android-res-
+          ${{ runner.os }}-build-debug-
           
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/cache-management.sh
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
-        
-    # Initialize error handling system
-    - name: Initialize error handling system
-      run: |
-        scripts/error-handling.sh validate
-        scripts/notification-system.sh init
-      continue-on-error: true
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
     # Cache management and optimization with error handling
     - name: Optimize cache structure with error handling
-      run: scripts/cache-management.sh optimize
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
+        # Clear KSP generated files to ensure fresh generation in CI
+        rm -rf app/build/generated/ksp 2>/dev/null || true
+        rm -rf build/generated/ksp 2>/dev/null || true
+        # Clear all build intermediates that might interfere with Room generation
+        rm -rf app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar 2>/dev/null || true
+        rm -rf app/build/intermediates/compile_library_classes_jar 2>/dev/null || true
+        rm -rf app/build/tmp/kotlin-classes 2>/dev/null || true
+        # Force clean Room schema location
+        rm -rf app/schemas 2>/dev/null || true
+        mkdir -p app/schemas
       continue-on-error: true
       
-    - name: Build debug APK with comprehensive error handling
-      run: scripts/build-retry-wrapper.sh debug
+    - name: Build debug APK with error handling
+      run: |
+        # Run debug build with basic error handling
+        if ! ./gradlew assembleDebug --stacktrace; then
+          echo "Debug build failed, attempting retry..."
+          sleep 5
+          ./gradlew clean assembleDebug --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report debug build failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "debug-build" "Debug APK build failed in CI pipeline"
+        echo "Debug APK build failed in CI pipeline"
+        echo "::error title=Debug Build Failed::Debug APK build failed after retry attempts"
       continue-on-error: true
       
     # Post-build cache management and statistics
     - name: Generate cache statistics
-      run: scripts/cache-management.sh stats
+      run: |
+        # Generate basic cache statistics
+        echo "Cache size: $(du -sh ~/.gradle/caches 2>/dev/null | cut -f1 || echo 'Unknown')"
+        echo "Build output size: $(du -sh app/build 2>/dev/null | cut -f1 || echo 'Unknown')"
       if: always()
       
-    - name: Upload cache statistics
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: build-cache-statistics
-        path: cache-stats.json
-        
     - name: Clean up oversized caches
-      run: scripts/cache-management.sh clean
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       if: always()
       
     - name: Upload debug APK
@@ -435,7 +447,7 @@ jobs:
     needs: [change-detection, strategy-matrix, test]
     if: needs.strategy-matrix.outputs.release-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -468,7 +480,6 @@ jobs:
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
           ${{ runner.os }}-gradle-deps-
-        save-always: true
           
     # Layer 2: Gradle Build Cache - Intermediate compilation results
     - name: Cache Gradle build cache
@@ -482,7 +493,6 @@ jobs:
           ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
           ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
           ${{ runner.os }}-gradle-build-
-        save-always: true
           
     # Layer 3: Build Intermediates Cache - Compilation outputs
     - name: Cache build intermediates
@@ -533,47 +543,46 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/cache-management.sh
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
-        
-    # Initialize error handling system
-    - name: Initialize error handling system
-      run: |
-        scripts/error-handling.sh validate
-        scripts/notification-system.sh init
-      continue-on-error: true
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
     # Cache management and optimization with error handling
     - name: Optimize cache structure with error handling
-      run: scripts/cache-management.sh optimize
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       continue-on-error: true
       
-    - name: Build release APK with comprehensive error handling
-      run: scripts/build-retry-wrapper.sh release
+    - name: Build release APK with error handling
+      run: |
+        # Run release build with basic error handling
+        if ! ./gradlew assembleRelease --stacktrace; then
+          echo "Release build failed, attempting retry..."
+          sleep 5
+          ./gradlew clean assembleRelease --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report release build failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "release-build" "Release APK build failed in CI pipeline"
+        echo "Release APK build failed in CI pipeline"
+        echo "::error title=Release Build Failed::Release APK build failed after retry attempts"
       continue-on-error: true
       
     # Post-build cache management and statistics
     - name: Generate cache statistics
-      run: scripts/cache-management.sh stats
+      run: |
+        # Generate basic cache statistics
+        echo "Cache size: $(du -sh ~/.gradle/caches 2>/dev/null | cut -f1 || echo 'Unknown')"
+        echo "Build output size: $(du -sh app/build 2>/dev/null | cut -f1 || echo 'Unknown')"
       if: always()
       
-    - name: Upload cache statistics
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: release-cache-statistics
-        path: cache-stats.json
-        
     - name: Clean up oversized caches
-      run: scripts/cache-management.sh clean
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       if: always()
       
     - name: Upload release APK

@@ -10,6 +10,7 @@ import com.workrec.domain.entities.GoalProgressRecord
 import com.workrec.domain.repository.GoalRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -50,7 +51,9 @@ class GoalRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getGoalsByType(type: GoalType): List<Goal> {
-        return goalDao.getGoalsByType(type).map { it.toDomainModel() }
+        return goalDao.getAllGoals().map { goalEntities ->
+            goalEntities.filter { it.type == type }.map { it.toDomainModel() }
+        }.first()
     }
 
     override suspend fun saveGoal(goal: Goal): Long {
@@ -67,13 +70,21 @@ class GoalRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateGoalProgress(id: Long, currentValue: Double) {
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        goalDao.updateGoalProgress(id, currentValue, today)
+        val goal = goalDao.getGoalById(id)
+        if (goal != null) {
+            val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+            val updatedGoal = goal.copy(currentValue = currentValue, updatedAt = today)
+            goalDao.updateGoal(updatedGoal)
+        }
     }
 
     override suspend fun markGoalAsCompleted(id: Long) {
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        goalDao.markGoalAsCompleted(id, today)
+        val goal = goalDao.getGoalById(id)
+        if (goal != null) {
+            val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+            val completedGoal = goal.copy(isCompleted = true, updatedAt = today)
+            goalDao.updateGoal(completedGoal)
+        }
     }
 
     // GoalProgressRecord関連のメソッド実装

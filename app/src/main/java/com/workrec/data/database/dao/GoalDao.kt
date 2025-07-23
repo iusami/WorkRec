@@ -1,86 +1,56 @@
 package com.workrec.data.database.dao
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import com.workrec.data.database.entities.GoalEntity
-import com.workrec.domain.entities.GoalType
+import com.workrec.data.database.entities.GoalWithProgress
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.LocalDate
 
-/**
- * 目標データアクセスオブジェクト
- */
 @Dao
 interface GoalDao {
-    
-    /**
-     * すべての目標を取得（作成日降順）
-     */
-    @Query("SELECT * FROM goals ORDER BY createdAt DESC")
+    @Query("SELECT * FROM goals")
     fun getAllGoals(): Flow<List<GoalEntity>>
-    
-    /**
-     * アクティブ（未完了）な目標を取得
-     */
-    @Query("SELECT * FROM goals WHERE isCompleted = 0 ORDER BY createdAt DESC")
-    fun getActiveGoals(): Flow<List<GoalEntity>>
-    
-    /**
-     * 完了済みの目標を取得
-     */
-    @Query("SELECT * FROM goals WHERE isCompleted = 1 ORDER BY createdAt DESC")
-    fun getCompletedGoals(): Flow<List<GoalEntity>>
-    
-    /**
-     * 指定したIDの目標を取得
-     */
-    @Query("SELECT * FROM goals WHERE id = :id")
-    suspend fun getGoalById(id: Long): GoalEntity?
-    
-    /**
-     * 指定したタイプの目標を取得
-     */
-    @Query("SELECT * FROM goals WHERE type = :type ORDER BY createdAt DESC")
-    suspend fun getGoalsByType(type: GoalType): List<GoalEntity>
-    
-    /**
-     * 目標を挿入
-     */
+
+    @Query("SELECT * FROM goals WHERE id = :goalId")
+    suspend fun getGoalById(goalId: Long): GoalEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoal(goal: GoalEntity): Long
-    
-    /**
-     * 目標を更新
-     */
+
     @Update
     suspend fun updateGoal(goal: GoalEntity)
-    
-    /**
-     * 目標を削除
-     */
+
     @Delete
     suspend fun deleteGoal(goal: GoalEntity)
-    
-    /**
-     * 指定したIDの目標を削除
-     */
-    @Query("DELETE FROM goals WHERE id = :id")
-    suspend fun deleteGoalById(id: Long)
-    
-    /**
-     * 目標の進捗を更新
-     */
-    @Query("UPDATE goals SET currentValue = :currentValue, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun updateGoalProgress(id: Long, currentValue: Double, updatedAt: LocalDate)
-    
-    /**
-     * 目標を完了状態に変更
-     */
-    @Query("UPDATE goals SET isCompleted = 1, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun markGoalAsCompleted(id: Long, updatedAt: LocalDate)
-    
-    /**
-     * アクティブな目標数を取得
-     */
-    @Query("SELECT COUNT(*) FROM goals WHERE isCompleted = 0")
-    suspend fun getActiveGoalCount(): Int
+
+    @Query("DELETE FROM goals WHERE id = :goalId")
+    suspend fun deleteGoalById(goalId: Long)
+
+    @Transaction
+    @Query("SELECT * FROM goals")
+    fun getGoalsWithProgress(): Flow<List<GoalWithProgress>>
+
+    @Transaction
+    @Query("SELECT * FROM goals WHERE id = :goalId")
+    fun getGoalWithProgressById(goalId: Long): Flow<GoalWithProgress?>
+
+    // Optimized query methods for goal filtering
+    @Query("SELECT * FROM goals WHERE isCompleted = 0")
+    fun getActiveGoals(): Flow<List<GoalEntity>>
+
+    @Query("SELECT * FROM goals WHERE isCompleted = 1")
+    fun getCompletedGoals(): Flow<List<GoalEntity>>
+
+    @Transaction
+    @Query("SELECT * FROM goals WHERE isCompleted = 0")
+    fun getActiveGoalsWithProgress(): Flow<List<GoalWithProgress>>
+
+    @Transaction
+    @Query("SELECT * FROM goals WHERE isCompleted = 1")
+    fun getCompletedGoalsWithProgress(): Flow<List<GoalWithProgress>>
 }

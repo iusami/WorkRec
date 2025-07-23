@@ -6,6 +6,7 @@ import com.workrec.data.database.WorkoutDatabase
 import com.workrec.data.database.dao.*
 import com.workrec.data.database.migrations.MIGRATION_2_3
 import com.workrec.data.database.migrations.MIGRATION_3_4
+import com.workrec.data.database.migrations.MIGRATION_4_5
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -34,7 +35,7 @@ object DatabaseModule {
             WorkoutDatabase::class.java,
             WorkoutDatabase.DATABASE_NAME
         )
-        .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
         .fallbackToDestructiveMigration() // 開発中のみ使用（未定義マイグレーション用）
         .build()
     }

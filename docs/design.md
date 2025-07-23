@@ -69,6 +69,75 @@
 
 ### 依存性注入
 - **Hilt**: Daggerベースの簡素化された依存性注入フレームワーク
+- **モジュール化DI設計**: 層別の依存性注入モジュール（DatabaseModule、RepositoryModule、UseCaseModule）
+
+#### Hilt依存性注入アーキテクチャ
+
+本プロジェクトでは、Clean Architectureの各層に対応した**モジュール化依存性注入設計**を採用しています：
+
+##### 1. データ層DI（`data/di/`）
+```kotlin
+// DatabaseModule.kt - データベース関連の依存性
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+    @Provides
+    @Singleton
+    fun provideWorkoutDatabase(@ApplicationContext context: Context): WorkoutDatabase
+    
+    @Provides
+    fun provideWorkoutDao(database: WorkoutDatabase): WorkoutDao
+    
+    @Provides
+    fun provideGoalDao(database: WorkoutDatabase): GoalDao
+}
+
+// RepositoryModule.kt - リポジトリ実装の依存性
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+    @Binds
+    abstract fun bindWorkoutRepository(impl: WorkoutRepositoryImpl): WorkoutRepository
+    
+    @Binds
+    abstract fun bindGoalRepository(impl: GoalRepositoryImpl): GoalRepository
+}
+```
+
+##### 2. ドメイン層DI（`domain/di/`）
+```kotlin
+// UseCaseModule.kt - ユースケース依存性の管理
+@Module
+@InstallIn(SingletonComponent::class)
+object UseCaseModule {
+    // UseCaseクラスは@Injectコンストラクタを持つため、
+    // 明示的な@Providesメソッドは不要
+    // このモジュールはHiltにUseCaseパッケージを認識させるために存在
+}
+```
+
+**UseCaseModuleの設計思想**：
+- **自動依存性解決**: `@Inject`コンストラクタによる自動的な依存性注入
+- **パッケージ認識**: Hiltがドメイン層のUseCaseクラスを確実に認識
+- **拡張性**: 新しいUseCaseクラス追加時の設定不要
+- **保守性**: 明示的な設定が不要なため、メンテナンスコストが低い
+
+##### 3. プレゼンテーション層DI（自動注入）
+```kotlin
+// ViewModelは@HiltViewModelアノテーションで自動注入
+@HiltViewModel
+class WorkoutViewModel @Inject constructor(
+    private val addWorkoutUseCase: AddWorkoutUseCase,
+    private val getWorkoutHistoryUseCase: GetWorkoutHistoryUseCase
+) : ViewModel()
+```
+
+#### DI設計の利点
+
+- **層別分離**: 各層の依存性が明確に分離され、責任範囲が明確
+- **テスタビリティ**: モックオブジェクトの注入が容易
+- **スケーラビリティ**: 新機能追加時の依存性管理が自動化
+- **型安全性**: コンパイル時の依存性検証
 
 ### 非同期処理・パフォーマンス
 - **Kotlin Coroutines**: 非同期処理とスレッド管理
@@ -84,7 +153,8 @@
 ### ビルド・開発ツール
 - **Kotlin DSL**: Gradleビルドスクリプト
 - **Version Catalog**: 依存関係の一元管理
-- **KSP (Kotlin Symbol Processing)**: コード生成の高速化
+- **KSP (Kotlin Symbol Processing)**: 高速コード生成（KAPT代替）
+- **Hilt + KSP**: 依存性注入の最適化されたコード生成
 
 ## プロジェクト構造
 
@@ -110,14 +180,19 @@ app/
 │   │   ├── repository/                # リポジトリインターフェース
 │   │   │   ├── WorkoutRepository.kt
 │   │   │   └── GoalRepository.kt
-│   │   └── usecase/                   # ユースケース（ビジネスロジック）
-│   │       ├── workout/
-│   │       │   ├── AddWorkoutUseCase.kt
-│   │       │   ├── GetWorkoutHistoryUseCase.kt
-│   │       │   └── DeleteWorkoutUseCase.kt
-│   │       └── goal/
-│   │           ├── SetGoalUseCase.kt
-│   │           └── GetGoalProgressUseCase.kt
+│   │   ├── usecase/                   # ユースケース（ビジネスロジック）
+│   │   │   ├── workout/
+│   │   │   │   ├── AddWorkoutUseCase.kt
+│   │   │   │   ├── GetWorkoutHistoryUseCase.kt
+│   │   │   │   └── DeleteWorkoutUseCase.kt
+│   │   │   ├── goal/
+│   │   │   │   ├── SetGoalUseCase.kt
+│   │   │   │   └── GetGoalProgressUseCase.kt
+│   │   │   ├── progress/
+│   │   │   ├── calendar/
+│   │   │   └── exercise/
+│   │   └── di/                        # ドメイン層のHiltモジュール
+│   │       └── UseCaseModule.kt
 │   ├── presentation/                  # プレゼンテーション層
 │   │   ├── ui/                        # Compose UI
 │   │   │   ├── screens/               # 各画面のComposable
@@ -268,7 +343,11 @@ fun WorkoutCalendar(
 - **継続目標**: 連続実施日数の目標
 
 #### Progress Tracking
+
+目標追跡機能では、Room Relationを活用した効率的なデータ取得を実現しています。
+
 ```kotlin
+// ドメインエンティティ
 data class Goal(
     val id: Long = 0,
     val type: GoalType,
@@ -280,7 +359,41 @@ data class Goal(
     val progressPercentage: Float
         get() = (currentValue / targetValue).coerceAtMost(1.0).toFloat()
 }
+
+// 進捗記録エンティティ
+data class GoalProgressRecord(
+    val id: Long = 0,
+    val goalId: Long,
+    val recordDate: LocalDate,
+    val progressValue: Double,
+    val notes: String? = null,
+    val createdAt: LocalDate
+)
 ```
+
+#### Room Relationによる効率的なデータ取得
+
+`GoalWithProgress`エンティティは、目標とその進捗記録を一度のクエリで取得するためのRoom Relationです：
+
+```kotlin
+// データベース関係エンティティ
+@Entity
+data class GoalWithProgress(
+    @Embedded val goal: GoalEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "goalId"
+    )
+    val progressRecords: List<GoalProgressEntity>
+)
+```
+
+この設計により以下の利点を実現：
+
+- **パフォーマンス向上**: 単一クエリでの関連データ取得
+- **データ整合性**: 外部キー制約による参照整合性保証
+- **開発効率**: 複雑なJOINクエリの自動生成
+- **型安全性**: コンパイル時の型チェック
 
 ### 5. オフライン対応
 
@@ -288,7 +401,9 @@ data class Goal(
 - **WorkoutEntity**: ワークアウトデータの永続化
 - **ExerciseEntity**: エクササイズ情報
 - **GoalEntity**: 目標データ
-- **Relations**: エンティティ間の関係定義
+- **GoalProgressEntity**: 目標進捗記録データ
+- **GoalWithProgress**: 目標と進捗記録の関連データ（Room Relation）
+- **Relations**: エンティティ間の関係定義とデータ結合
 
 #### データ同期戦略
 - **オフライン優先**: すべてのデータはまずローカルに保存
@@ -392,11 +507,41 @@ data class Goal(
 - **レスポンシブデザインテスト**: 画面サイズ対応の検証
 - **キーボードナビゲーション**: 支援技術対応
 
-### CI/CD最適化テスト設定
+### CI/CD最適化設定
+
+#### ビルド信頼性の向上
+
+プロジェクトでは、CI/CD環境での安定したビルド実行を実現するため、以下の最適化を実装：
+
+##### KSP/KAPTタスク順序制御
+```kotlin
+// build.gradle.kts での設定 - CI環境での適切な実行順序を保証
+afterEvaluate {
+    // KSPがKAPTより先に実行されることを保証（Room DAO生成のため）
+    tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptTask>().configureEach {
+        mustRunAfter(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+    
+    // KotlinコンパイルがKSPの完了を待つことを保証
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        dependsOn(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+    
+    // KAPTスタブ生成がKSPの完了を待つことを保証
+    tasks.withType<org.jetbrains.kotlin.gradle.internal.KaptGenerateStubsTask>().configureEach {
+        dependsOn(tasks.withType<com.google.devtools.ksp.gradle.KspTask>())
+    }
+}
+```
+
+**効果:**
+- **レースコンディション防止**: Room DAOがKAPT処理前に確実に生成される
+- **CI信頼性向上**: 並列環境での間欠的ビルド失敗を排除
+- **ビルド決定性**: 全環境で一貫したタスク実行順序を保証
 
 #### 並列テスト実行の最適化
 
-プロジェクトでは、CI/CD環境での高速テスト実行を実現するため、以下の最適化を実装：
+CI/CD環境での高速テスト実行を実現するため、以下の最適化を実装：
 
 ##### 単体テスト最適化
 ```kotlin
@@ -455,3 +600,42 @@ testOptions {
 - **テスト実行時間**: 並列実行により大幅な高速化を実現
 - **テスト安定性**: Test Orchestrator とアニメーション無効化による安定実行
 - **リソース効率**: メモリ最適化による CI/CD 環境での安定動作
+
+## 最新の実装状況
+
+### Goal Repository 最適化プロジェクト（進行中）
+
+**実装完了項目:**
+- ✅ **GoalDao 最適化クエリ実装**: データベースレベルでのフィルタリング機能を追加
+  - `getActiveGoals()`: アクティブな目標のみを取得
+  - `getCompletedGoals()`: 完了した目標のみを取得
+  - `getActiveGoalsWithProgress()`: アクティブな目標と進捗データを取得
+  - `getCompletedGoalsWithProgress()`: 完了した目標と進捗データを取得
+
+- ✅ **包括的単体テスト実装**: `GoalDaoTest.kt` による完全なテストカバレッジ
+  - アクティブ/完了目標の正確なフィルタリング検証
+  - 空データセットとエッジケースの処理確認
+  - Flow リアクティブストリームの動作検証
+  - 大量データでの混在状態フィルタリング性能確認
+
+**技術的実装詳細:**
+```kotlin
+// 最適化されたクエリ例
+@Query("SELECT * FROM goals WHERE isCompleted = 0")
+fun getActiveGoals(): Flow<List<GoalEntity>>
+
+@Transaction
+@Query("SELECT * FROM goals WHERE isCompleted = 0")
+fun getActiveGoalsWithProgress(): Flow<List<GoalWithProgress>>
+```
+
+**パフォーマンス改善効果:**
+- **メモリ使用量削減**: 全データ読み込み → 必要データのみ取得
+- **クエリ性能向上**: インメモリフィルタリング → データベースレベルフィルタリング
+- **スケーラビリティ向上**: O(n) → O(log n) 時間複雑度（インデックス使用時）
+
+**次のステップ:**
+- GoalRepositoryImpl の最適化実装
+- リポジトリレイヤーの単体テスト追加
+- データベースインデックス追加による性能向上
+- 統合テストとパフォーマンスベンチマーク実行

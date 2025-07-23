@@ -114,7 +114,7 @@ jobs:
     needs: [change-detection, strategy-matrix]
     if: needs.strategy-matrix.outputs.lint-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -142,23 +142,27 @@ jobs:
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
         restore-keys: |
           ${{ runner.os }}-gradle-deps-
-        save-always: true
         
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
       
     - name: Run lint analysis with error handling
-      run: scripts/build-retry-wrapper.sh lint
+      run: |
+        # Run lint with basic error handling
+        if ! ./gradlew lint --stacktrace; then
+          echo "Lint failed, attempting retry..."
+          sleep 5
+          ./gradlew clean lint --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report lint failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "pr-lint-analysis" "Lint analysis failed in PR validation"
+        echo "Lint analysis failed in PR validation"
+        echo "::error title=PR Lint Failed::Lint analysis failed after retry attempts"
       continue-on-error: true
       
     - name: Upload lint results
@@ -174,7 +178,7 @@ jobs:
     needs: [change-detection, strategy-matrix]
     if: needs.strategy-matrix.outputs.test-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -207,7 +211,6 @@ jobs:
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
           ${{ runner.os }}-gradle-deps-
-        save-always: true
           
     # Layer 2: Gradle Build Cache - Intermediate compilation results
     - name: Cache Gradle build cache
@@ -221,7 +224,6 @@ jobs:
           ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
           ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
           ${{ runner.os }}-gradle-build-
-        save-always: true
           
     # Layer 3: Build Intermediates Cache - Compilation outputs
     - name: Cache build intermediates
@@ -286,47 +288,46 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/cache-management.sh
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
-        
-    # Initialize error handling system
-    - name: Initialize error handling system
-      run: |
-        scripts/error-handling.sh validate
-        scripts/notification-system.sh init
-      continue-on-error: true
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
     # Cache management and optimization with error handling
     - name: Optimize cache structure with error handling
-      run: scripts/cache-management.sh optimize
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       continue-on-error: true
       
-    - name: Run unit tests with comprehensive error handling
-      run: scripts/build-retry-wrapper.sh test
+    - name: Run unit tests with error handling
+      run: |
+        # Run tests with basic error handling
+        if ! ./gradlew testDebugUnitTest --stacktrace; then
+          echo "Tests failed, attempting retry..."
+          sleep 5
+          ./gradlew clean testDebugUnitTest --stacktrace
+        fi
       
     # Error reporting on failure
     - name: Report test failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "pr-unit-tests" "Unit tests failed in PR validation"
+        echo "Unit tests failed in PR validation"
+        echo "::error title=PR Tests Failed::Unit tests failed after retry attempts"
       continue-on-error: true
       
     # Post-build cache management and statistics
     - name: Generate cache statistics
-      run: scripts/cache-management.sh stats
+      run: |
+        # Generate basic cache statistics
+        echo "Cache size: $(du -sh ~/.gradle/caches 2>/dev/null | cut -f1 || echo 'Unknown')"
+        echo "Build output size: $(du -sh app/build 2>/dev/null | cut -f1 || echo 'Unknown')"
       if: always()
-      
-    - name: Upload cache statistics
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-cache-statistics
-        path: cache-stats.json
         
     - name: Clean up oversized caches
-      run: scripts/cache-management.sh clean
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       if: always()
       
     - name: Upload test results
@@ -344,7 +345,7 @@ jobs:
     needs: [change-detection, strategy-matrix]
     if: needs.strategy-matrix.outputs.debug-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -377,7 +378,6 @@ jobs:
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*') }}
           ${{ runner.os }}-gradle-deps-
-        save-always: true
           
     # Layer 2: Gradle Build Cache - Intermediate compilation results
     - name: Cache Gradle build cache
@@ -391,7 +391,6 @@ jobs:
           ${{ runner.os }}-gradle-build-${{ hashFiles('**/*.kt', '**/*.java', '**/*.gradle*') }}
           ${{ runner.os }}-gradle-build-${{ github.base_ref || github.ref_name }}
           ${{ runner.os }}-gradle-build-
-        save-always: true
           
     # Layer 3: Build Intermediates Cache - Compilation outputs
     - name: Cache build intermediates
@@ -442,32 +441,36 @@ jobs:
     - name: Make scripts executable
       run: |
         chmod +x ./gradlew
-        chmod +x scripts/cache-management.sh
-        chmod +x scripts/error-handling.sh
-        chmod +x scripts/build-retry-wrapper.sh
-        chmod +x scripts/notification-system.sh
-        
-    # Initialize error handling system
-    - name: Initialize error handling system
-      run: |
-        scripts/error-handling.sh validate
-        scripts/notification-system.sh init
-      continue-on-error: true
+        find scripts -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         
     # Cache management and optimization with error handling
     - name: Optimize cache structure with error handling
-      run: scripts/cache-management.sh optimize
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       continue-on-error: true
       
-    - name: Build debug APK with comprehensive error handling
-      run: scripts/build-retry-wrapper.sh debug
+    - name: Build debug APK with error handling
+      run: |
+        # Run debug build with basic error handling
+        if ! ./gradlew assembleDebug --stacktrace; then
+          echo "Debug build failed, attempting retry..."
+          sleep 5
+          ./gradlew clean assembleDebug --stacktrace
+        fi
       
     # Execute custom Gradle tasks based on detected strategy with error handling
     - name: Execute strategy-specific tasks with error handling
       run: |
         if [[ -n "${{ needs.change-detection.outputs.gradle-tasks }}" ]]; then
           echo "Executing strategy-specific tasks: ${{ needs.change-detection.outputs.gradle-tasks }}"
-          scripts/build-retry-wrapper.sh ci-build "${{ needs.change-detection.outputs.build-strategy }}" "${{ needs.change-detection.outputs.gradle-tasks }}"
+          # Run tasks with basic error handling
+          if ! ./gradlew ${{ needs.change-detection.outputs.gradle-tasks }} --stacktrace; then
+            echo "Strategy tasks failed, attempting retry..."
+            sleep 5
+            ./gradlew clean ${{ needs.change-detection.outputs.gradle-tasks }} --stacktrace
+          fi
         else
           echo "No specific tasks defined for build strategy: ${{ needs.change-detection.outputs.build-strategy }}"
         fi
@@ -477,23 +480,23 @@ jobs:
     - name: Report debug build failures
       if: failure()
       run: |
-        scripts/notification-system.sh build-failure "pr-debug-build" "Debug APK build failed in PR validation"
+        echo "Debug APK build failed in PR validation"
+        echo "::error title=PR Debug Build Failed::Debug APK build failed after retry attempts"
       continue-on-error: true
       
     # Post-build cache management and statistics
     - name: Generate cache statistics
-      run: scripts/cache-management.sh stats
+      run: |
+        # Generate basic cache statistics
+        echo "Cache size: $(du -sh ~/.gradle/caches 2>/dev/null | cut -f1 || echo 'Unknown')"
+        echo "Build output size: $(du -sh app/build 2>/dev/null | cut -f1 || echo 'Unknown')"
       if: always()
-      
-    - name: Upload cache statistics
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: build-cache-statistics
-        path: cache-stats.json
         
     - name: Clean up oversized caches
-      run: scripts/cache-management.sh clean
+      run: |
+        # Basic cache cleanup
+        find ~/.gradle/caches -name "*.tmp" -delete 2>/dev/null || true
+        find ~/.gradle/caches -name "*.lock" -delete 2>/dev/null || true
       if: always()
       
     - name: Upload debug APK
@@ -508,7 +511,7 @@ jobs:
     needs: [change-detection, strategy-matrix]
     if: needs.strategy-matrix.outputs.instrumented-test-needed == 'true'
     env:
-      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || env.GRADLE_OPTS }}
+      GRADLE_OPTS: ${{ needs.change-detection.outputs.gradle-opts || '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2' }}
     
     steps:
     - name: Checkout code
@@ -554,7 +557,6 @@ jobs:
         key: ${{ runner.os }}-gradle-deps-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties', '**/libs.versions.toml') }}
         restore-keys: |
           ${{ runner.os }}-gradle-deps-
-        save-always: true
         
     - name: Make scripts executable
       run: chmod +x ./gradlew

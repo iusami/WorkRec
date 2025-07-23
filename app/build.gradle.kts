@@ -3,7 +3,6 @@ import java.time.Duration
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-kapt")
     id("com.google.devtools.ksp")
     id("dagger.hilt.android.plugin")
     id("kotlin-parcelize")
@@ -155,22 +154,45 @@ tasks.withType<com.android.build.gradle.tasks.factory.AndroidUnitTest> {
     forkEvery = 50
 }
 
-// Kapt Optimization for Annotation Processing
-kapt {
-    correctErrorTypes = true
-    useBuildCache = true
-    mapDiagnosticLocations = true
-    arguments {
-        arg("dagger.hilt.shareTestComponents", "true")
-        arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
+// KSP Optimization for both Hilt and Room
+ksp {
+    // Hilt configuration (migrated from KAPT)
+    arg("dagger.hilt.shareTestComponents", "true")
+    arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
+    arg("dagger.fastInit", "enabled")
+    arg("dagger.formatGeneratedSource", "disabled")
+    
+    // Room configuration
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.expandProjection", "true")
+    arg("room.generateKotlin", "true")
+    arg("room.generateKotlinCodeByDefault", "true")
+    
+    // CI環境では確実にRoom DAOを生成するため、インクリメンタル処理を無効化
+    if (System.getenv("CI") == "true") {
+        arg("room.incremental", "false")
+        arg("room.forceGenerateAll", "true")
+    } else {
+        arg("room.incremental", "true")
     }
 }
 
-// KSP Optimization for Symbol Processing
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-    arg("room.incremental", "true")
-    arg("room.expandProjection", "true")
+// KSP configuration - ensure all annotation processing is handled by KSP
+afterEvaluate {
+    // CI環境では、KSPタスクを強制的に実行
+    if (System.getenv("CI") == "true") {
+        tasks.withType<com.google.devtools.ksp.gradle.KspTask>().configureEach {
+            outputs.upToDateWhen { false }
+        }
+        
+        // CI環境では、リポジトリ実装クラスのコンパイルを確実に行う
+        tasks.named("compileDebugKotlin") {
+            dependsOn("kspDebugKotlin")
+        }
+        tasks.named("compileReleaseKotlin") {
+            dependsOn("kspReleaseKotlin")
+        }
+    }
 }
 
 dependencies {
@@ -204,7 +226,7 @@ dependencies {
     // Hilt Dependency Injection
     implementation("com.google.dagger:hilt-android:$hilt_version")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-    kapt("com.google.dagger:hilt-compiler:$hilt_version")
+    ksp("com.google.dagger:hilt-compiler:$hilt_version")
 
     // Room Database
     implementation("androidx.room:room-runtime:$room_version")
@@ -235,6 +257,7 @@ dependencies {
 
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.room:room-testing:$room_version")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     
