@@ -58,19 +58,31 @@ analyze_cache_performance() {
         local count=0
         
         for metrics_file in "$METRICS_DIR"/*.json; do
-            if [[ -f "$metrics_file" ]]; then
+            if [[ -f "$metrics_file" && -s "$metrics_file" ]]; then
                 if command -v jq &> /dev/null; then
-                    local rate=$(jq -r '.cache_hit_rate // 0' "$metrics_file")
-                    if [[ "$rate" != "null" && "$rate" != "0" ]]; then
-                        total_rate=$(echo "$total_rate + $rate" | bc -l 2>/dev/null || echo "$total_rate")
-                        count=$((count + 1))
+                    # Check if file contains valid JSON
+                    if jq empty "$metrics_file" 2>/dev/null; then
+                        local rate=$(jq -r '.cache_hit_rate // 0' "$metrics_file" 2>/dev/null || echo "0")
+                        if [[ "$rate" != "null" && "$rate" != "0" && "$rate" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+                            if command -v bc &> /dev/null; then
+                                total_rate=$(echo "$total_rate + $rate" | bc -l 2>/dev/null || echo "$total_rate")
+                            else
+                                total_rate=$((total_rate + rate))
+                            fi
+                            count=$((count + 1))
+                        fi
                     fi
                 fi
             fi
         done
         
-        if [[ $count -gt 0 ]] && command -v bc &> /dev/null; then
-            cache_hit_rate=$(echo "scale=2; $total_rate / $count" | bc -l)
+        if [[ $count -gt 0 ]]; then
+            if command -v bc &> /dev/null; then
+                cache_hit_rate=$(echo "scale=2; $total_rate / $count" | bc -l 2>/dev/null || echo "0")
+            else
+                # Fallback calculation without bc
+                cache_hit_rate=$((total_rate / count))
+            fi
         fi
     fi
     
@@ -80,12 +92,17 @@ analyze_cache_performance() {
     fi
     
     # Generate cache recommendations
-    if (( $(echo "$cache_hit_rate < 60" | bc -l 2>/dev/null || echo "1") )); then
+    local cache_hit_int=$(echo "$cache_hit_rate" | cut -d'.' -f1)
+    if [[ -z "$cache_hit_int" ]]; then
+        cache_hit_int=0
+    fi
+    
+    if [[ $cache_hit_int -lt 60 ]]; then
         recommendations+=("🔴 **Critical**: Cache hit rate is ${cache_hit_rate}% (target: >80%)")
         recommendations+=("   - Review cache key generation strategy")
         recommendations+=("   - Check for unstable file timestamps")
         recommendations+=("   - Verify cache paths configuration")
-    elif (( $(echo "$cache_hit_rate < 80" | bc -l 2>/dev/null || echo "1") )); then
+    elif [[ $cache_hit_int -lt 80 ]]; then
         recommendations+=("🟡 **Warning**: Cache hit rate is ${cache_hit_rate}% (target: >80%)")
         recommendations+=("   - Fine-tune cache key patterns")
         recommendations+=("   - Consider cache warming strategies")
@@ -111,7 +128,7 @@ analyze_cache_performance() {
 - **Target Size**: <2048MB
 
 ### Recommendations
-$(printf '%s\n' "${recommendations[@]}")
+$(if [[ ${#recommendations[@]:-0} -gt 0 ]]; then printf '%s\n' "${recommendations[@]}"; else echo "No specific cache recommendations at this time."; fi)
 
 EOF
 }
@@ -129,11 +146,14 @@ analyze_build_performance() {
         local times=()
         
         for metrics_file in "$METRICS_DIR"/*.json; do
-            if [[ -f "$metrics_file" ]]; then
+            if [[ -f "$metrics_file" && -s "$metrics_file" ]]; then
                 if command -v jq &> /dev/null; then
-                    local time=$(jq -r '.build_duration // 0' "$metrics_file")
-                    if [[ "$time" != "null" && "$time" != "0" ]]; then
-                        times+=("$time")
+                    # Check if file contains valid JSON
+                    if jq empty "$metrics_file" 2>/dev/null; then
+                        local time=$(jq -r '.build_duration // 0' "$metrics_file" 2>/dev/null || echo "0")
+                        if [[ "$time" != "null" && "$time" != "0" && "$time" =~ ^[0-9]+$ ]]; then
+                            times+=("$time")
+                        fi
                     fi
                 fi
             fi
@@ -215,7 +235,7 @@ analyze_build_performance() {
 - **Target Build Time**: <300s
 
 ### Recommendations
-$(printf '%s\n' "${recommendations[@]}")
+$(if [[ ${#recommendations[@]:-0} -gt 0 ]]; then printf '%s\n' "${recommendations[@]}"; else echo "No specific build performance recommendations at this time."; fi)
 
 EOF
 }
@@ -274,7 +294,7 @@ analyze_resource_utilization() {
 - **Memory Allocation**: ${memory_allocation}
 
 ### Recommendations
-$(printf '%s\n' "${recommendations[@]}")
+$(if [[ ${#recommendations[@]:-0} -gt 0 ]]; then printf '%s\n' "${recommendations[@]}"; else echo "No specific resource utilization recommendations at this time."; fi)
 
 EOF
 }

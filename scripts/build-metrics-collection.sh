@@ -105,11 +105,47 @@ echo "CPU cores available: $CPU_CORES"
 
 # Execute the build with logging
 echo "Executing Gradle build..."
-GRADLE_OPTS="-Dorg.gradle.logging.level=info" ./gradlew tasks --build-cache --parallel 2>&1 | tee "$BUILD_LOG_FILE"
+
+# Determine appropriate build command based on build type
+BUILD_COMMAND=""
+case "$BUILD_TYPE" in
+    "documentation")
+        echo "Documentation-only changes detected, running lightweight build..."
+        BUILD_COMMAND="assembleDebug"
+        ;;
+    "test-only")
+        echo "Test-only changes detected, running tests..."
+        BUILD_COMMAND="testDebugUnitTest"
+        ;;
+    "build-config")
+        echo "Build configuration changes detected, running full build..."
+        BUILD_COMMAND="clean assembleDebug testDebugUnitTest"
+        ;;
+    "source-code"|"mixed"|*)
+        echo "Source code changes detected, running comprehensive build..."
+        BUILD_COMMAND="assembleDebug testDebugUnitTest"
+        ;;
+esac
+
+# Execute the build command (allow failure to continue metrics collection)
+set +e
+GRADLE_OPTS="-Dorg.gradle.logging.level=info" ./gradlew $BUILD_COMMAND --build-cache --parallel 2>&1 | tee "$BUILD_LOG_FILE"
+BUILD_EXIT_CODE=$?
+set -e
+
+echo "Build command executed: ./gradlew $BUILD_COMMAND"
+echo "Build exit code: $BUILD_EXIT_CODE"
 
 # End timing
 BUILD_END_TIME=$(get_timestamp_ms)
 BUILD_DURATION=$((BUILD_END_TIME - BUILD_START_TIME))
+
+# Check if build was successful
+BUILD_SUCCESS="true"
+if [[ $BUILD_EXIT_CODE -ne 0 ]]; then
+    BUILD_SUCCESS="false"
+    echo "Build failed with exit code $BUILD_EXIT_CODE, but continuing with metrics collection..."
+fi
 
 # Analyze cache effectiveness
 CACHE_STATS=$(analyze_cache_effectiveness "$BUILD_LOG_FILE")
@@ -145,7 +181,8 @@ cat > "$METRICS_FILE" << EOF
     "total_duration_seconds": $(echo "scale=2; $BUILD_DURATION / 1000" | bc -l),
     "peak_memory_mb": $PEAK_MEMORY_MB,
     "cpu_cores_available": $CPU_CORES,
-    "gradle_daemon_count": $GRADLE_DAEMON_COUNT
+    "gradle_daemon_count": $GRADLE_DAEMON_COUNT,
+    "build_success": $BUILD_SUCCESS
   },
   "cache_effectiveness": {
     "total_tasks": $TOTAL_TASKS,
@@ -173,6 +210,8 @@ EOF
 # Display summary
 echo ""
 echo "=== Build Metrics Summary ==="
+echo "Build Command: ./gradlew $BUILD_COMMAND"
+echo "Build Success: $BUILD_SUCCESS"
 echo "Build Duration: $(echo "scale=2; $BUILD_DURATION / 1000" | bc -l)s"
 echo "Cache Hit Rate: ${CACHE_HIT_RATE}%"
 echo "Total Tasks: $TOTAL_TASKS"

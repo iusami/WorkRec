@@ -16,6 +16,64 @@ CACHE_RECOVERY_ENABLED=${CACHE_RECOVERY_ENABLED:-true}
 CLEAN_FALLBACK_ENABLED=${CLEAN_FALLBACK_ENABLED:-true}
 ERROR_REPORTING_ENABLED=${ERROR_REPORTING_ENABLED:-true}
 
+# Validate build environment
+validate_build_environment() {
+    log_info "Validating build environment..."
+    
+    local validation_errors=0
+    
+    # Check Java installation
+    if ! command -v java >/dev/null 2>&1; then
+        log_error "Java not found in PATH"
+        validation_errors=$((validation_errors + 1))
+    else
+        local java_version=$(java -version 2>&1 | head -n1)
+        log_info "Java version: $java_version"
+    fi
+    
+    # Check Gradle wrapper
+    if [[ ! -f "./gradlew" ]]; then
+        log_error "Gradle wrapper not found"
+        validation_errors=$((validation_errors + 1))
+    elif [[ ! -x "./gradlew" ]]; then
+        log_warn "Gradle wrapper not executable, fixing permissions..."
+        chmod +x ./gradlew
+    fi
+    
+    # Check disk space
+    local available_space=$(df . | tail -n1 | awk '{print $4}')
+    local available_gb=$(echo "scale=2; $available_space / 1024 / 1024" | bc -l 2>/dev/null || echo "0")
+    if command -v bc >/dev/null 2>&1 && (( $(echo "$available_gb < 2" | bc -l 2>/dev/null || echo "0") )); then
+        log_error "Insufficient disk space: ${available_gb}GB available (minimum 2GB required)"
+        validation_errors=$((validation_errors + 1))
+    fi
+    
+    # Check memory availability
+    if command -v free >/dev/null 2>&1; then
+        local available_memory=$(free -m | grep "^Mem:" | awk '{print $7}')
+        if [[ $available_memory -lt 1024 ]]; then
+            log_warn "Low available memory: ${available_memory}MB (recommended minimum 1GB)"
+        fi
+    fi
+    
+    # Check for required directories
+    local required_dirs=("app/src" "gradle")
+    for dir in "${required_dirs[@]}"; do
+        if [[ ! -d "$dir" ]]; then
+            log_error "Required directory not found: $dir"
+            validation_errors=$((validation_errors + 1))
+        fi
+    done
+    
+    if [[ $validation_errors -eq 0 ]]; then
+        log_success "Build environment validation passed"
+        return 0
+    else
+        log_error "Build environment validation failed with $validation_errors errors"
+        return 1
+    fi
+}
+
 # Build wrapper with comprehensive error handling
 execute_build_with_error_handling() {
     local build_command="$1"
@@ -106,63 +164,7 @@ execute_build_with_error_handling() {
     return $final_exit_code
 }
 
-# Validate build environment
-validate_build_environment() {
-    log_info "Validating build environment..."
-    
-    local validation_errors=0
-    
-    # Check Java installation
-    if ! command -v java >/dev/null 2>&1; then
-        log_error "Java not found in PATH"
-        validation_errors=$((validation_errors + 1))
-    else
-        local java_version=$(java -version 2>&1 | head -n1)
-        log_info "Java version: $java_version"
-    fi
-    
-    # Check Gradle wrapper
-    if [[ ! -f "./gradlew" ]]; then
-        log_error "Gradle wrapper not found"
-        validation_errors=$((validation_errors + 1))
-    elif [[ ! -x "./gradlew" ]]; then
-        log_warn "Gradle wrapper not executable, fixing permissions..."
-        chmod +x ./gradlew
-    fi
-    
-    # Check disk space
-    local available_space=$(df . | tail -n1 | awk '{print $4}')
-    local available_gb=$(echo "scale=2; $available_space / 1024 / 1024" | bc -l)
-    if (( $(echo "$available_gb < 2" | bc -l) )); then
-        log_error "Insufficient disk space: ${available_gb}GB available (minimum 2GB required)"
-        validation_errors=$((validation_errors + 1))
-    fi
-    
-    # Check memory availability
-    if command -v free >/dev/null 2>&1; then
-        local available_memory=$(free -m | grep "^Mem:" | awk '{print $7}')
-        if [[ $available_memory -lt 1024 ]]; then
-            log_warn "Low available memory: ${available_memory}MB (recommended minimum 1GB)"
-        fi
-    fi
-    
-    # Check for required directories
-    local required_dirs=("app/src" "gradle")
-    for dir in "${required_dirs[@]}"; do
-        if [[ ! -d "$dir" ]]; then
-            log_error "Required directory not found: $dir"
-            validation_errors=$((validation_errors + 1))
-        fi
-    done
-    
-    if [[ $validation_errors -eq 0 ]]; then
-        log_success "Build environment validation passed"
-        return 0
-    else
-        log_error "Build environment validation failed with $validation_errors errors"
-        return 1
-    fi
-}
+
 
 # Generate build success report
 generate_build_success_report() {
