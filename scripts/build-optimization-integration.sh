@@ -2,6 +2,18 @@
 
 # Build Optimization Integration Script
 # Orchestrates all optimization documentation and monitoring components
+#
+# Prerequisites:
+#   - jq (JSON processor) - for parsing build metrics
+#   - bc (calculator) - for precise numerical calculations
+#   - Standard Unix tools: awk, sed, grep, find
+#
+# Installation:
+#   macOS: brew install jq bc
+#   Ubuntu/Debian: sudo apt-get install jq bc
+#   CentOS/RHEL: sudo yum install jq bc
+#
+# Note: The script will run with reduced functionality if optional tools are missing
 
 set -euo pipefail
 
@@ -54,17 +66,48 @@ check_prerequisites() {
         fi
     done
     
-    # Install missing required tools if possible
+    # Document missing required tools as prerequisites
     if [[ ${#missing_tools[@]} -gt 0 ]]; then
-        echo -e "${YELLOW}Installing missing tools: ${missing_tools[*]}${NC}"
+        echo -e "${YELLOW}⚠️ Missing required tools detected: ${missing_tools[*]}${NC}"
+        echo -e "${BLUE}📋 Please install the following prerequisites:${NC}"
+        echo ""
         
-        if command -v brew &> /dev/null; then
-            brew install "${missing_tools[@]}"
-        elif command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y "${missing_tools[@]}"
+        for tool in "${missing_tools[@]}"; do
+            case "$tool" in
+                "jq")
+                    echo -e "  ${BLUE}•${NC} jq (JSON processor)"
+                    echo -e "    macOS: ${GREEN}brew install jq${NC}"
+                    echo -e "    Ubuntu/Debian: ${GREEN}sudo apt-get install jq${NC}"
+                    echo -e "    CentOS/RHEL: ${GREEN}sudo yum install jq${NC}"
+                    ;;
+                "bc")
+                    echo -e "  ${BLUE}•${NC} bc (calculator)"
+                    echo -e "    macOS: ${GREEN}brew install bc${NC}"
+                    echo -e "    Ubuntu/Debian: ${GREEN}sudo apt-get install bc${NC}"
+                    echo -e "    CentOS/RHEL: ${GREEN}sudo yum install bc${NC}"
+                    ;;
+                *)
+                    echo -e "  ${BLUE}•${NC} $tool"
+                    echo -e "    Please install using your system's package manager"
+                    ;;
+            esac
+            echo ""
+        done
+        
+        echo -e "${YELLOW}💡 Note: The script will continue with reduced functionality.${NC}"
+        echo -e "${YELLOW}   Some calculations may be less precise without these tools.${NC}"
+        echo ""
+        
+        # Allow user to continue or exit
+        if [[ "${CI:-false}" == "true" ]]; then
+            echo -e "${YELLOW}⚠️ Running in CI environment - continuing with available tools${NC}"
         else
-            echo -e "${RED}❌ Cannot install missing tools automatically. Please install: ${missing_tools[*]}${NC}"
-            exit 1
+            read -p "Continue anyway? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo -e "${RED}❌ Exiting. Please install required tools and try again.${NC}"
+                exit 1
+            fi
         fi
     fi
     
@@ -141,7 +184,7 @@ generate_dashboard() {
 create_integration_summary() {
     log "Creating integration summary..."
     
-    local summary_file="$PROJECT_ROOT/build-optimization-summary.md"
+    local summary_file="$DOCS_DIR/build-optimization-summary.md"
     
     cat > "$summary_file" << 'EOF'
 # Build Optimization Integration Summary
@@ -167,7 +210,7 @@ This document provides a comprehensive overview of the CI build optimization imp
   - Performance trend analysis
 
 ### 3. Automated Analysis
-- **Optimization Recommendations** (`optimization-recommendations.md`)
+- **Optimization Recommendations** (`docs/optimization-recommendations.md`)
   - Automated performance analysis
   - Actionable optimization suggestions
   - Priority-based implementation plan
@@ -222,7 +265,7 @@ open build-metrics/dashboard.html
 ./scripts/optimization-recommendations.sh
 
 # View recommendations
-open optimization-recommendations.md
+open docs/optimization-recommendations.md
 ```
 
 ### Integration Script
@@ -345,17 +388,17 @@ display_results() {
     fi
     
     # Check recommendations
-    if [[ -f "$PROJECT_ROOT/optimization-recommendations.md" ]]; then
+    if [[ -f "$DOCS_DIR/optimization-recommendations.md" ]]; then
         echo -e "${GREEN}✅ Optimization Analysis${NC}"
-        echo -e "   🔍 Recommendations: $PROJECT_ROOT/optimization-recommendations.md"
+        echo -e "   🔍 Recommendations: $DOCS_DIR/optimization-recommendations.md"
     else
         echo -e "${RED}❌ Optimization Analysis${NC}"
     fi
     
     # Check integration summary
-    if [[ -f "$PROJECT_ROOT/build-optimization-summary.md" ]]; then
+    if [[ -f "$DOCS_DIR/build-optimization-summary.md" ]]; then
         echo -e "${GREEN}✅ Integration Summary${NC}"
-        echo -e "   📄 Summary: $PROJECT_ROOT/build-optimization-summary.md"
+        echo -e "   📄 Summary: $DOCS_DIR/build-optimization-summary.md"
     else
         echo -e "${RED}❌ Integration Summary${NC}"
     fi
@@ -363,8 +406,8 @@ display_results() {
     echo -e "\n${YELLOW}🚀 Quick Start Commands:${NC}"
     echo -e "   View Documentation: ${BLUE}open docs/build-optimization-guide.md${NC}"
     echo -e "   View Dashboard: ${BLUE}open build-metrics/dashboard.html${NC}"
-    echo -e "   View Recommendations: ${BLUE}open optimization-recommendations.md${NC}"
-    echo -e "   View Summary: ${BLUE}open build-optimization-summary.md${NC}"
+    echo -e "   View Recommendations: ${BLUE}open docs/optimization-recommendations.md${NC}"
+    echo -e "   View Summary: ${BLUE}open docs/build-optimization-summary.md${NC}"
 }
 
 # Main execution function

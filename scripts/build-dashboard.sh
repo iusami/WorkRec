@@ -141,10 +141,13 @@ calculate_stats() {
         fi
         
         # Calculate time savings percentage
-        if [[ $baseline_time -gt 0 && $avg_build_time -gt 0 ]] && command -v bc &> /dev/null; then
-            time_savings_percent=$(echo "scale=1; (($baseline_time - $avg_build_time) / $baseline_time) * 100" | bc -l)
+        local baseline_int=$(echo "$baseline_time" | cut -d'.' -f1)
+        local avg_time_int=$(echo "$avg_build_time" | cut -d'.' -f1)
+        if [[ $baseline_int -gt 0 && $avg_time_int -gt 0 ]] && command -v bc &> /dev/null; then
+            time_savings_percent=$(echo "scale=1; (($baseline_time - $avg_build_time) / $baseline_time) * 100" | bc -l 2>/dev/null || echo "0")
             # Ensure non-negative percentage
-            if (( $(echo "$time_savings_percent < 0" | bc -l) )); then
+            local is_negative=$(echo "$time_savings_percent < 0" | bc -l 2>/dev/null || echo "0")
+            if [[ "$is_negative" == "1" ]]; then
                 time_savings_percent=0
             fi
         fi
@@ -474,20 +477,104 @@ generate_dashboard() {
 </html>
 EOF
 
-    # Replace placeholders with actual values
-    sed -i.bak "s/AVG_BUILD_TIME/$avg_build_time/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/AVG_CACHE_RATE/$avg_cache_rate/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/TOTAL_BUILDS/$total_builds/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/TIME_SAVINGS_PERCENT/$time_savings_percent/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/CACHE_EFFECTIVENESS/$cache_effectiveness/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/MEMORY_USAGE_GB/$memory_usage_gb/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/INCREMENTAL_STATUS/$incremental_status/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/CACHE_STATUS/$cache_status/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/MEMORY_STATUS/$memory_status/g" "$DASHBOARD_FILE"
-    sed -i.bak "s/TIMESTAMP_PLACEHOLDER/$(date '+%Y-%m-%d %H:%M:%S')/g" "$DASHBOARD_FILE"
+    # Replace placeholders with actual values using safer method
+    # Function to safely replace placeholders
+    safe_replace() {
+        local file="$1"
+        local placeholder="$2"
+        local value="$3"
+        
+        # Validate inputs
+        if [[ ! -f "$file" ]]; then
+            echo "Warning: File $file not found for placeholder replacement"
+            return 1
+        fi
+        
+        # Use Python for safer replacement if available
+        if command -v python3 &> /dev/null; then
+            python3 -c "
+import sys
+import os
+
+try:
+    with open('$file', 'r') as f:
+        content = f.read()
     
-    # Clean up backup file
-    rm -f "$DASHBOARD_FILE.bak"
+    # Replace placeholder with value
+    original_content = content
+    content = content.replace('$placeholder', '''$value''')
+    
+    # Check if replacement occurred
+    if content == original_content:
+        print('Warning: Placeholder $placeholder not found in $file', file=sys.stderr)
+    
+    with open('$file', 'w') as f:
+        f.write(content)
+        
+except Exception as e:
+    print(f'Error replacing $placeholder in $file: {e}', file=sys.stderr)
+    sys.exit(1)
+" || {
+                echo "Error: Python replacement failed for $placeholder"
+                return 1
+            }
+        elif command -v perl &> /dev/null; then
+            # Use Perl as fallback - create temp file for portability
+            local temp_file="${file}.tmp.$$"  # Use PID for unique temp file
+            if perl -pe "s/\Q$placeholder\E/\Q$value\E/g" "$file" > "$temp_file" 2>/dev/null; then
+                if mv "$temp_file" "$file" 2>/dev/null; then
+                    return 0
+                else
+                    rm -f "$temp_file"
+                    echo "Error: Failed to move temp file for $placeholder"
+                    return 1
+                fi
+            else
+                rm -f "$temp_file"
+                echo "Error: Perl replacement failed for $placeholder"
+                return 1
+            fi
+        else
+            # Fallback to sed with temp file for portability
+            local escaped_value=$(echo "$value" | sed 's/[\/&\\]/\\&/g')
+            local temp_file="${file}.tmp.$$"  # Use PID for unique temp file
+            if sed "s/$placeholder/$escaped_value/g" "$file" > "$temp_file" 2>/dev/null; then
+                if mv "$temp_file" "$file" 2>/dev/null; then
+                    return 0
+                else
+                    rm -f "$temp_file"
+                    echo "Error: Failed to move temp file for $placeholder"
+                    return 1
+                fi
+            else
+                rm -f "$temp_file"
+                echo "Error: sed replacement failed for $placeholder"
+                return 1
+            fi
+        fi
+        
+        return 0
+    }
+    
+    # Safely replace all placeholders
+    local replacement_errors=0
+    
+    safe_replace "$DASHBOARD_FILE" "AVG_BUILD_TIME" "${avg_build_time:-0}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "AVG_CACHE_RATE" "${avg_cache_rate:-0}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "TOTAL_BUILDS" "${total_builds:-0}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "TIME_SAVINGS_PERCENT" "${time_savings_percent:-0}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "CACHE_EFFECTIVENESS" "${cache_effectiveness:-0}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "MEMORY_USAGE_GB" "${memory_usage_gb:-0}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "INCREMENTAL_STATUS" "${incremental_status:-Unknown}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "CACHE_STATUS" "${cache_status:-Unknown}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "MEMORY_STATUS" "${memory_status:-Unknown}" || ((replacement_errors++))
+    safe_replace "$DASHBOARD_FILE" "TIMESTAMP_PLACEHOLDER" "$(date '+%Y-%m-%d %H:%M:%S')" || ((replacement_errors++))
+    
+    if [[ $replacement_errors -gt 0 ]]; then
+        echo "Warning: $replacement_errors placeholder replacement(s) failed"
+        echo "Dashboard may contain unreplaced placeholders"
+    fi
+
     
     log "Dashboard generated: $DASHBOARD_FILE"
 }

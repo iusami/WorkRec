@@ -21,7 +21,7 @@ This document provides a comprehensive overview of the CI build optimization imp
   - Performance trend analysis
 
 ### 3. Automated Analysis
-- **Optimization Recommendations** (`optimization-recommendations.md`)
+- **Optimization Recommendations** (`docs/optimization-recommendations.md`)
   - Automated performance analysis
   - Actionable optimization suggestions
   - Priority-based implementation plan
@@ -76,7 +76,7 @@ open build-metrics/dashboard.html
 ./scripts/optimization-recommendations.sh
 
 # View recommendations
-open optimization-recommendations.md
+open docs/optimization-recommendations.md
 ```
 
 ### Integration Script

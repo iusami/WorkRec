@@ -1,6 +1,6 @@
 # Build Optimization Recommendations
 
-Generated: $(date '+%Y-%m-%d %H:%M:%S')
+Generated: 2025-07-24 18:01:29
 
 ## Executive Summary
 
@@ -10,33 +10,28 @@ This report provides automated analysis of build performance and actionable opti
 ## Cache Performance Analysis
 
 ### Current Metrics
-- **Cache Hit Rate**: 13.70%
-- **Cache Size**: 2908MB
+- **Cache Hit Rate**: 54.83%
+- **Cache Size**: 1584MB
 - **Target Hit Rate**: >80%
 - **Target Size**: <2048MB
 
 ### Recommendations
-🔴 **Critical**: Cache hit rate is 13.70% (target: >80%)
+🔴 **Critical**: Cache hit rate is 54.83% (target: >80%)
    - Review cache key generation strategy
    - Check for unstable file timestamps
    - Verify cache paths configuration
-🟡 **Warning**: Cache size is 2908MB (target: <2GB)
-   - Implement cache cleanup policies
-   - Review cache retention settings
 
 
 ## Build Performance Analysis
 
 ### Current Metrics
-- **Average Build Time**: 38s
-- **Performance Trend**: increasing
+- **Average Build Time**: 212s
+- **Performance Trend**: stable
 - **Target Build Time**: <300s
 
 ### Recommendations
-✅ **Good**: Average build time is 38s
-🔴 **Alert**: Build times are trending upward
-   - Investigate recent changes causing performance regression
-   - Review dependency updates impact
+✅ **Good**: Average build time is 212s
+ℹ️ **Info**: Build times are stable
 
 
 ## Resource Utilization Analysis
@@ -47,7 +42,7 @@ This report provides automated analysis of build performance and actionable opti
 - **Memory Allocation**: 4g
 
 ### Recommendations
-
+No specific resource utilization recommendations at this time.
 
 
 ## Optimization Action Plan
