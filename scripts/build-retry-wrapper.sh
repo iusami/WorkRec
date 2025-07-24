@@ -7,8 +7,27 @@ set -euo pipefail
 
 # Source the error handling script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/error-handling.sh"
-source "$SCRIPT_DIR/cache-management.sh"
+
+# Source required scripts with existence checks
+if [[ -f "$SCRIPT_DIR/error-handling.sh" ]]; then
+    source "$SCRIPT_DIR/error-handling.sh"
+else
+    echo "Warning: error-handling.sh not found. Some error handling features may not work."
+    # Provide minimal fallback logging functions
+    log_info() { echo "[INFO] $1"; }
+    log_warn() { echo "[WARN] $1"; }
+    log_error() { echo "[ERROR] $1"; }
+    log_success() { echo "[SUCCESS] $1"; }
+fi
+
+if [[ -f "$SCRIPT_DIR/cache-management.sh" ]]; then
+    source "$SCRIPT_DIR/cache-management.sh"
+else
+    echo "Warning: cache-management.sh not found. Cache management features will be disabled."
+    # Provide fallback functions
+    monitor_cache_health() { return 0; }
+    recover_cache_with_error_handling() { return 0; }
+fi
 
 # Configuration
 BUILD_RETRY_ENABLED=${BUILD_RETRY_ENABLED:-true}
@@ -42,10 +61,44 @@ validate_build_environment() {
     
     # Check disk space
     local available_space=$(df . | tail -n1 | awk '{print $4}')
-    local available_gb=$(echo "scale=2; $available_space / 1024 / 1024" | bc -l 2>/dev/null || echo "0")
-    if command -v bc >/dev/null 2>&1 && (( $(echo "$available_gb < 2" | bc -l 2>/dev/null || echo "0") )); then
+    local available_gb
+    local disk_space_insufficient=0
+    
+    # Calculate available GB with robust fallback methods
+    local bc_available=false
+    if command -v bc >/dev/null 2>&1; then
+        # Test bc functionality with a simple calculation
+        if echo "1 + 1" | bc -l >/dev/null 2>&1; then
+            bc_available=true
+        fi
+    fi
+    
+    if [[ "$bc_available" == "true" ]]; then
+        available_gb=$(echo "scale=2; $available_space / 1024 / 1024" | bc -l 2>/dev/null)
+        # Validate bc result and fallback if needed
+        if [[ -z "$available_gb" || "$available_gb" == "0" || ! "$available_gb" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            log_warn "bc calculation failed, using awk fallback"
+            available_gb=$(awk -v space="$available_space" 'BEGIN {printf "%.2f", space/1024/1024}')
+        fi
+        # Check if space is insufficient using bc
+        disk_space_insufficient=$(echo "$available_gb < 2" | bc -l 2>/dev/null || echo "0")
+        # Validate comparison result
+        if [[ ! "$disk_space_insufficient" =~ ^[01]$ ]]; then
+            disk_space_insufficient=$(awk -v gb="$available_gb" 'BEGIN {print (gb < 2) ? 1 : 0}')
+        fi
+    else
+        # Fallback calculation using awk
+        log_info "bc not available, using awk for calculations"
+        available_gb=$(awk -v space="$available_space" 'BEGIN {printf "%.2f", space/1024/1024}')
+        # Check if space is insufficient using awk
+        disk_space_insufficient=$(awk -v gb="$available_gb" 'BEGIN {print (gb < 2) ? 1 : 0}')
+    fi
+    
+    if [[ "$disk_space_insufficient" == "1" ]]; then
         log_error "Insufficient disk space: ${available_gb}GB available (minimum 2GB required)"
         validation_errors=$((validation_errors + 1))
+    else
+        log_info "Available disk space: ${available_gb}GB"
     fi
     
     # Check memory availability
@@ -149,7 +202,32 @@ execute_build_with_error_handling() {
         # Post-build cache optimization
         if [[ "$CACHE_RECOVERY_ENABLED" == "true" ]]; then
             log_info "Performing post-build cache optimization..."
-            scripts/cache-management.sh optimize
+            
+            # Check if cache management script exists and is executable
+            local cache_script="$SCRIPT_DIR/cache-management.sh"
+            if [[ -f "$cache_script" && -x "$cache_script" ]]; then
+                if "$cache_script" optimize; then
+                    log_success "Cache optimization completed successfully"
+                else
+                    log_warn "Cache optimization failed, but build was successful"
+                fi
+            elif [[ -f "$cache_script" ]]; then
+                log_warn "Cache management script found but not executable: $cache_script"
+                log_info "Attempting to fix permissions..."
+                if chmod +x "$cache_script" 2>/dev/null; then
+                    log_info "Fixed permissions, retrying cache optimization..."
+                    if "$cache_script" optimize; then
+                        log_success "Cache optimization completed successfully"
+                    else
+                        log_warn "Cache optimization failed after permission fix"
+                    fi
+                else
+                    log_warn "Cannot fix permissions for cache management script"
+                fi
+            else
+                log_warn "Cache management script not found: $cache_script"
+                log_info "Skipping cache optimization - continuing with successful build"
+            fi
         fi
     else
         log_error "All build attempts failed"
@@ -369,7 +447,22 @@ main() {
     esac
 }
 
+# Check for bc availability and warn if not found
+check_bc_availability() {
+    if ! command -v bc >/dev/null 2>&1; then
+        log_warn "bc calculator not found. Some calculations may be less precise."
+        log_info "Install bc for better precision: brew install bc (macOS) or apt-get install bc (Ubuntu)"
+        return 1
+    elif ! echo "1 + 1" | bc -l >/dev/null 2>&1; then
+        log_warn "bc calculator found but not functioning properly. Using fallback calculations."
+        return 1
+    fi
+    return 0
+}
+
 # Execute main function if script is run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    # Perform initial bc availability check
+    check_bc_availability || true  # Don't fail if bc is not available
     main "$@"
 fi

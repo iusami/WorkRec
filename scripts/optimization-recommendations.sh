@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Configuration
 METRICS_DIR="build-metrics"
-RECOMMENDATIONS_FILE="optimization-recommendations.md"
+RECOMMENDATIONS_FILE="docs/optimization-recommendations.md"
 LOG_FILE="optimization-analysis.log"
 BASELINE_FILE="build-baseline.json"
 
@@ -32,10 +32,11 @@ initialize_analysis() {
     mkdir -p "$METRICS_DIR"
     
     # Initialize recommendations file
-    cat > "$RECOMMENDATIONS_FILE" << 'EOF'
+    local current_timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    cat > "$RECOMMENDATIONS_FILE" << EOF
 # Build Optimization Recommendations
 
-Generated: $(date '+%Y-%m-%d %H:%M:%S')
+Generated: $current_timestamp
 
 ## Executive Summary
 

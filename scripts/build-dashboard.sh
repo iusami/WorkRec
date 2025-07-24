@@ -519,15 +519,35 @@ except Exception as e:
                 return 1
             }
         elif command -v perl &> /dev/null; then
-            # Use Perl as fallback
-            if ! perl -i.bak -pe "s/\Q$placeholder\E/\Q$value\E/g" "$file"; then
+            # Use Perl as fallback - create temp file for portability
+            local temp_file="${file}.tmp.$$"  # Use PID for unique temp file
+            if perl -pe "s/\Q$placeholder\E/\Q$value\E/g" "$file" > "$temp_file" 2>/dev/null; then
+                if mv "$temp_file" "$file" 2>/dev/null; then
+                    return 0
+                else
+                    rm -f "$temp_file"
+                    echo "Error: Failed to move temp file for $placeholder"
+                    return 1
+                fi
+            else
+                rm -f "$temp_file"
                 echo "Error: Perl replacement failed for $placeholder"
                 return 1
             fi
         else
-            # Fallback to sed with escaping
+            # Fallback to sed with temp file for portability
             local escaped_value=$(echo "$value" | sed 's/[\/&\\]/\\&/g')
-            if ! sed -i.bak "s/$placeholder/$escaped_value/g" "$file"; then
+            local temp_file="${file}.tmp.$$"  # Use PID for unique temp file
+            if sed "s/$placeholder/$escaped_value/g" "$file" > "$temp_file" 2>/dev/null; then
+                if mv "$temp_file" "$file" 2>/dev/null; then
+                    return 0
+                else
+                    rm -f "$temp_file"
+                    echo "Error: Failed to move temp file for $placeholder"
+                    return 1
+                fi
+            else
+                rm -f "$temp_file"
                 echo "Error: sed replacement failed for $placeholder"
                 return 1
             fi
@@ -554,12 +574,7 @@ except Exception as e:
         echo "Warning: $replacement_errors placeholder replacement(s) failed"
         echo "Dashboard may contain unreplaced placeholders"
     fi
-    
-    # Clean up backup files if they exist
-    rm -f "$DASHBOARD_FILE.bak"
-    
-    # Clean up backup file
-    rm -f "$DASHBOARD_FILE.bak"
+
     
     log "Dashboard generated: $DASHBOARD_FILE"
 }
